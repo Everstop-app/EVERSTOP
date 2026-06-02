@@ -14,25 +14,25 @@ type = "image"
 title = "generated_image"
 
 [[generated]]
-id = "nM5VZyhkPJnkLVLATwe41"
-uri = "file://artifacts/mobile/assets/images/splash_bg_1.png"
+id = "0pLD4_qw0zZGeL9yOHjKI"
+uri = "file://artifacts/mobile/assets/images/splash_tex_1.png"
 type = "image"
-title = "aerial highway interchange sunset"
+title = "dark map grid road network texture"
 
 [[generated]]
-id = "RcxIxGupDX2FZ_2qGpRn3"
-uri = "file://artifacts/mobile/assets/images/splash_bg_2.png"
+id = "Qu9EIfH1oNyMlKyxRPDtD"
+uri = "file://artifacts/mobile/assets/images/splash_tex_2.png"
 type = "image"
-title = "night highway convoy milky way"
+title = "dark asphalt road texture top down"
 
 [[generated]]
-id = "5fnXtCT4T9cutBlPXYvl5"
-uri = "file://artifacts/mobile/assets/images/splash_bg_3.png"
+id = "6pVqTtEAonQ6ZY7ijZtXA"
+uri = "file://artifacts/mobile/assets/images/splash_tex_3.png"
 type = "image"
-title = "logistics hub bird eye view"
+title = "cream topographic contour lines texture"
 
 [[generated]]
-id = "X40ztX1qyjomTZfwrx0Fc"
-uri = "file://artifacts/mobile/assets/images/splash_bg_4.png"
+id = "jyEY6V3BLpTajkWc_mgQ_"
+uri = "file://artifacts/mobile/assets/images/splash_tex_4.png"
 type = "image"
-title = "truck mountain highway fog"
+title = "white hex grid blue salmon sage pattern"

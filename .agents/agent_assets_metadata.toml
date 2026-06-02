@@ -12,15 +12,3 @@ id = "gKp-_pOaQDfd5Vsht7qeA"
 uri = "file://artifacts/mobile/assets/images/splash.png"
 type = "image"
 title = "generated_image"
-
-[[generated]]
-id = "0pLD4_qw0zZGeL9yOHjKI"
-uri = "file://artifacts/mobile/assets/images/splash_tex_1.png"
-type = "image"
-title = "dark map grid road network texture"
-
-[[generated]]
-id = "rrHuf5GFYekYxJVBgIvLi"
-uri = "file://artifacts/mobile/assets/images/us_map_white.png"
-type = "image"
-title = "white USA silhouette flat"

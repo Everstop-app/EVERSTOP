@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useRef, useState, useEffect } from "react";
 import {
@@ -81,6 +82,15 @@ export default function MapScreen() {
         style={[styles.overlay, { paddingTop: insets.top + WEB_TOP + 8 }]}
         pointerEvents="box-none"
       >
+        {/* Logo row */}
+        <View pointerEvents="none">
+          <Image
+            source={require("@/assets/images/logo_transparent.png")}
+            style={styles.logoImg}
+            contentFit="contain"
+          />
+        </View>
+
         <View style={styles.searchRow}>
           <View style={styles.searchWrap}>
             <SearchBar value={query} onChangeText={setQuery} placeholder="Search locations..." />
@@ -176,6 +186,7 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  logoImg: { width: 150, height: 50 },
   overlay: {
     position: "absolute",
     top: 0,

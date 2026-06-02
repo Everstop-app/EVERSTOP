@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import React, { useState } from "react";
 import {
   FlatList,
@@ -36,7 +37,11 @@ export default function SearchScreen() {
           },
         ]}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>Locations</Text>
+        <Image
+          source={require("@/assets/images/logo_transparent.png")}
+          style={styles.logoImg}
+          contentFit="contain"
+        />
         <View style={styles.searchWrap}>
           <SearchBar value={query} onChangeText={setQuery} placeholder="Search company, city, state..." />
         </View>
@@ -81,11 +86,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     gap: 10,
   },
-  title: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-    paddingHorizontal: 16,
-  },
+  logoImg: { width: 160, height: 52, marginHorizontal: 16 },
   searchWrap: {
     paddingHorizontal: 16,
   },

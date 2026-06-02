@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -39,10 +40,11 @@ export default function MapScreen() {
         ]}
       >
         <View style={styles.titleRow}>
-          <View style={styles.logoRow}>
-            <Ionicons name="location" size={22} color={colors.primary} />
-            <Text style={[styles.title, { color: colors.foreground }]}>EverStop</Text>
-          </View>
+          <Image
+            source={require("@/assets/images/logo_transparent.png")}
+            style={styles.logoImg}
+            contentFit="contain"
+          />
           <TouchableOpacity
             style={[styles.addBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push("/add-location")}
@@ -107,8 +109,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
   },
-  logoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  title: { fontSize: 24, fontFamily: "Inter_700Bold" },
+  logoImg: { width: 160, height: 52 },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",

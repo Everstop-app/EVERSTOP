@@ -12,3 +12,27 @@ id = "gKp-_pOaQDfd5Vsht7qeA"
 uri = "file://artifacts/mobile/assets/images/splash.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "nM5VZyhkPJnkLVLATwe41"
+uri = "file://artifacts/mobile/assets/images/splash_bg_1.png"
+type = "image"
+title = "aerial highway interchange sunset"
+
+[[generated]]
+id = "RcxIxGupDX2FZ_2qGpRn3"
+uri = "file://artifacts/mobile/assets/images/splash_bg_2.png"
+type = "image"
+title = "night highway convoy milky way"
+
+[[generated]]
+id = "5fnXtCT4T9cutBlPXYvl5"
+uri = "file://artifacts/mobile/assets/images/splash_bg_3.png"
+type = "image"
+title = "logistics hub bird eye view"
+
+[[generated]]
+id = "X40ztX1qyjomTZfwrx0Fc"
+uri = "file://artifacts/mobile/assets/images/splash_bg_4.png"
+type = "image"
+title = "truck mountain highway fog"

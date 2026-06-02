@@ -18,21 +18,3 @@ id = "0pLD4_qw0zZGeL9yOHjKI"
 uri = "file://artifacts/mobile/assets/images/splash_tex_1.png"
 type = "image"
 title = "dark map grid road network texture"
-
-[[generated]]
-id = "Qu9EIfH1oNyMlKyxRPDtD"
-uri = "file://artifacts/mobile/assets/images/splash_tex_2.png"
-type = "image"
-title = "dark asphalt road texture top down"
-
-[[generated]]
-id = "6pVqTtEAonQ6ZY7ijZtXA"
-uri = "file://artifacts/mobile/assets/images/splash_tex_3.png"
-type = "image"
-title = "cream topographic contour lines texture"
-
-[[generated]]
-id = "jyEY6V3BLpTajkWc_mgQ_"
-uri = "file://artifacts/mobile/assets/images/splash_tex_4.png"
-type = "image"
-title = "white hex grid blue salmon sage pattern"

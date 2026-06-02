@@ -1,0 +1,179 @@
+Truck Driver Delivery GPS App
+Build a mobile app for iOS and Android called EverStop
+App Purpose
+Everstop GPS is a community-driven GPS and delivery location database designed specifically for truck drivers, delivery drivers, carriers, and customers.
+The goal is to help drivers find the exact place to park, unload, check in, and complete deliveries while saving time, reducing missed deliveries, and improving safety.
+The app works similarly to a GPS app but uses information submitted by drivers and customers.
+User Types
+Driver Account
+Drivers can:
+Create an account
+Log in securely
+Save favorite locations
+Submit delivery locations
+Upload photos
+Add delivery instructions
+Leave ratings and comments
+Report outdated information
+Earn points for contributing information
+Customer Account
+Customers can:
+Create an account
+Add delivery locations
+Upload photos
+Add parking instructions
+Add gate codes
+Add receiving hours
+Add dock information
+Update delivery information
+Respond to driver comments
+Core Map Features
+Use Google Maps integration.
+Drivers can:
+Search locations
+Drop custom pins
+View community-submitted pins
+Navigate to selected locations
+Filter by truck-friendly locations
+Each location should display:
+Business name
+Address
+GPS coordinates
+Photos
+Driver notes
+Customer notes
+Parking instructions
+Dock locations
+Receiving hours
+Contact information
+Date last updated
+Location Information
+Each pin should contain:
+General Information
+Company Name
+Street Address
+City
+State
+Zip Code
+Truck Information
+Best truck entrance
+Parking availability
+Overnight parking allowed
+Dock number
+Dock type
+Check-in location
+Scale available
+Turning difficulty
+Delivery Information
+Receiving hours
+Appointment requirements
+Contact phone number
+Special instructions
+Photos
+Users can upload:
+Entrance photos
+Dock photos
+Parking photos
+Satellite view screenshots
+Community Features
+Drivers can:
+Rate locations 1–5 stars
+Leave comments
+Upload updated photos
+Verify information accuracy
+Locations receive:
+Trust score
+Verification score
+Last updated date
+Highly verified locations appear first.
+Search Filters
+Filter by:
+Overnight parking
+Truck entrance available
+Easy backing
+Difficult backing
+Open 24 hours
+Restrooms available
+Scale available
+High driver rating
+Gamification
+Users earn points for:
+Adding locations
+Uploading photos
+Verifying information
+Updating outdated information
+Ranks:
+Rookie Driver
+Road Warrior
+Professional Driver
+Elite Contributor
+Master Navigator
+Admin Dashboard
+Admin can:
+Approve reports
+Remove spam
+Ban users
+Manage locations
+Manage photos
+View analytics
+View user activity
+Notifications
+Send notifications for:
+Location updates
+Verification requests
+Comments on locations
+New photos added
+Achievement rewards
+Monetization
+Free Version:
+Search locations
+View basic information
+Premium Subscription:
+Advanced filters
+Offline maps
+Route planning
+Premium location details
+Ad-free experience
+Business Subscription:
+Claim business profile
+Update location information
+Respond to drivers
+Analytics dashboard
+Design Requirements
+Design for professional truck drivers.
+Style:
+Clean modern interface
+Dark mode
+Large buttons
+Easy one-hand use
+Fast loading
+Minimal screen clutter
+Colors:
+Medium light blue
+White
+Blue accents
+Technical Requirements
+Flutter mobile app
+Google Maps API integration
+Cloud database
+User authentication
+Photo storage
+Push notifications
+Real-time updates
+GPS navigation integration
+iOS and Android deployment
+Future Features
+Phase 2:
+AI route optimization
+Fuel stop recommendations
+Truck parking finder
+Weigh station information
+Weather alerts
+Traffic alerts
+Voice assistant
+Phase 3:
+Carrier dispatch integration
+Load board integration
+ELD integration
+Fleet management dashboard
+This prompt describes an app that could realistically become the "Waze for truck deliveries" by using information contributed by drivers and customers. That community-generated location database is the feature that makes the idea potentially valuable and difficult for competitors to copy.

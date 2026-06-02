@@ -132,7 +132,7 @@ export default function ProfileScreen() {
         <View style={[styles.pointsCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
           <View style={styles.pointsRow}>
             <View>
-              <Text style={[styles.pointsNum, { color: colors.foreground }]}>{user.points.toLocaleString()}</Text>
+              <Text style={[styles.pointsNum, { color: colors.foreground }]}>{user.points.toLocaleString('en-US')}</Text>
               <Text style={[styles.pointsLabel, { color: colors.mutedForeground }]}>Points earned</Text>
             </View>
             {nextRank && (
@@ -210,7 +210,7 @@ export default function ProfileScreen() {
                 <Ionicons name={RANK_ICONS[r] as any} size={18} color={isUnlocked ? rc : colors.muted} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.rankItemName, { color: isUnlocked ? colors.foreground : colors.mutedForeground }]}>{r}</Text>
-                  <Text style={[styles.rankItemPts, { color: colors.mutedForeground }]}>{POINTS_FOR_RANK[r].toLocaleString()} pts</Text>
+                  <Text style={[styles.rankItemPts, { color: colors.mutedForeground }]}>{POINTS_FOR_RANK[r].toLocaleString('en-US')} pts</Text>
                 </View>
                 {isCurrentRank && (
                   <View style={[styles.currentBadge, { backgroundColor: rc }]}>

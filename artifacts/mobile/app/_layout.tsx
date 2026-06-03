@@ -23,8 +23,9 @@ const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false }} initialRouteName="splash">
+      <Stack.Screen name="splash" options={{ headerShown: false, animation: "none" }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="location" options={{ headerShown: false }} />
       <Stack.Screen name="auth" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="add-location" options={{ presentation: "modal", headerShown: false }} />

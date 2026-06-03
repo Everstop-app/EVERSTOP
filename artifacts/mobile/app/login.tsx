@@ -20,10 +20,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
 type ClerkOAuthStrategy =
-  | "oauth_facebook"
   | "oauth_google"
   | "oauth_apple"
-  | "oauth_linkedin";
+  | "oauth_github"
+  | "oauth_x";
 
 type SocialProvider = {
   key: string;
@@ -34,10 +34,10 @@ type SocialProvider = {
 };
 
 const SOCIALS: SocialProvider[] = [
-  { key: "facebook", strategy: "oauth_facebook", label: "Facebook", icon: "logo-facebook", color: "#1877F2" },
   { key: "google", strategy: "oauth_google", label: "Google", icon: "logo-google", color: "#DB4437" },
   { key: "apple", strategy: "oauth_apple", label: "Apple", icon: "logo-apple", color: "#000000" },
-  { key: "linkedin", strategy: "oauth_linkedin", label: "LinkedIn", icon: "logo-linkedin", color: "#0A66C2" },
+  { key: "github", strategy: "oauth_github", label: "GitHub", icon: "logo-github", color: "#333333" },
+  { key: "x", strategy: "oauth_x", label: "X", icon: "logo-x", color: "#000000" },
 ];
 
 // Preloads the browser for Android devices to reduce auth load time

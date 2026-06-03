@@ -173,7 +173,7 @@ export default function AuthScreen() {
                     ]}
                   >
                     <Ionicons
-                      name={type === "driver" ? "truck" : "business"}
+                      name={(type === "driver" ? "truck" : "business") as any}
                       size={20}
                       color={accountType === type ? colors.primary : colors.mutedForeground}
                     />

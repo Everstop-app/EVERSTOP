@@ -1,8 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth as useClerkAuth, useSSO } from "@clerk/expo";
+import * as AuthSession from "expo-auth-session";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useEffect } from "react";
+import * as WebBrowser from "expo-web-browser";
+import React, { useCallback, useEffect } from "react";
 import {
+  ActivityIndicator,
   Image,
   Platform,
   Pressable,
@@ -13,34 +17,55 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+
+type ClerkOAuthStrategy =
+  | "oauth_facebook"
+  | "oauth_google"
+  | "oauth_apple"
+  | "oauth_linkedin";
 
 type SocialProvider = {
   key: string;
+  strategy: ClerkOAuthStrategy;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
 };
 
 const SOCIALS: SocialProvider[] = [
-  { key: "facebook", label: "Facebook", icon: "logo-facebook", color: "#1877F2" },
-  { key: "google", label: "Google", icon: "logo-google", color: "#DB4437" },
-  { key: "apple", label: "Apple", icon: "logo-apple", color: "#000000" },
-  { key: "linkedin", label: "LinkedIn", icon: "logo-linkedin", color: "#0A66C2" },
-  { key: "other", label: "More", icon: "ellipsis-horizontal", color: "#7A8CA0" },
+  { key: "facebook", strategy: "oauth_facebook", label: "Facebook", icon: "logo-facebook", color: "#1877F2" },
+  { key: "google", strategy: "oauth_google", label: "Google", icon: "logo-google", color: "#DB4437" },
+  { key: "apple", strategy: "oauth_apple", label: "Apple", icon: "logo-apple", color: "#000000" },
+  { key: "linkedin", strategy: "oauth_linkedin", label: "LinkedIn", icon: "logo-linkedin", color: "#0A66C2" },
 ];
+
+// Preloads the browser for Android devices to reduce auth load time
+function useWarmUpBrowser() {
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    void WebBrowser.warmUpAsync();
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
+}
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { isSignedIn } = useClerkAuth();
+  const { startSSOFlow } = useSSO();
+  const [loading, setLoading] = React.useState<string | null>(null);
 
-  // If the user becomes authenticated (existing session or after the
-  // auth modal completes), move them into the app.
+  useWarmUpBrowser();
+
+  // If already signed in, move to the app
   useEffect(() => {
-    if (user) router.replace("/(tabs)");
-  }, [user]);
+    if (isSignedIn) router.replace("/(tabs)");
+  }, [isSignedIn]);
 
   const tap = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -56,11 +81,40 @@ export default function LoginScreen() {
     router.push("/auth?mode=register");
   };
 
-  const onSocial = () => {
-    tap();
-    // Social sign-in is not wired to a provider in this prototype.
-    router.push("/auth?mode=login");
-  };
+  const onSocial = useCallback(
+    async (strategy: ClerkOAuthStrategy) => {
+      tap();
+      setLoading(strategy);
+      try {
+        const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+          strategy,
+          redirectUrl: AuthSession.makeRedirectUri(),
+        });
+
+        if (createdSessionId) {
+          setActive!({
+            session: createdSessionId,
+            navigate: async ({ session, decorateUrl }) => {
+              if (session?.currentTask) {
+                console.log(session?.currentTask);
+                return;
+              }
+              router.replace(decorateUrl("/") as any);
+            },
+          });
+        } else {
+          // If there is no createdSessionId, there are missing requirements
+          // such as MFA or additional fields
+          console.log("SSO missing requirements", { signIn, signUp });
+        }
+      } catch (err) {
+        console.error("SSO error", err);
+      } finally {
+        setLoading(null);
+      }
+    },
+    [startSSOFlow],
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -122,18 +176,23 @@ export default function LoginScreen() {
             {SOCIALS.map((s) => (
               <Pressable
                 key={s.key}
-                onPress={onSocial}
+                onPress={() => onSocial(s.strategy)}
+                disabled={loading !== null}
                 style={({ pressed }) => [
                   styles.socialBtn,
                   {
                     backgroundColor: colors.background,
                     borderColor: colors.border,
-                    opacity: pressed ? 0.6 : 1,
+                    opacity: pressed || loading !== null ? 0.6 : 1,
                   },
                 ]}
                 accessibilityLabel={`Continue with ${s.label}`}
               >
-                <Ionicons name={s.icon} size={24} color={s.color} />
+                {loading === s.strategy ? (
+                  <ActivityIndicator size="small" color={s.color} />
+                ) : (
+                  <Ionicons name={s.icon} size={24} color={s.color} />
+                )}
               </Pressable>
             ))}
           </View>

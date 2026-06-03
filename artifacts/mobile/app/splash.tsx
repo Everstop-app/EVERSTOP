@@ -10,7 +10,7 @@ export default function AppSplashScreen() {
     SplashScreen.hideAsync();
 
     const timer = setTimeout(() => {
-      router.replace("/(tabs)");
+      router.replace("/login");
     }, 2400);
 
     return () => clearTimeout(timer);

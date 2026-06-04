@@ -159,31 +159,6 @@ export default function MapScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Legend */}
-      <View
-        style={[
-          styles.legend,
-          {
-            backgroundColor: colors.card + "EE",
-            borderColor: colors.border,
-            bottom: insets.bottom + 84 + 34,
-            left: 16,
-          },
-        ]}
-        pointerEvents="none"
-      >
-        {[
-          { color: RATING_COLORS.high, label: "4.0+" },
-          { color: RATING_COLORS.medium, label: "3.0+" },
-          { color: RATING_COLORS.low, label: "<3.0" },
-          { color: RATING_COLORS.none, label: "New" },
-        ].map((item) => (
-          <View key={item.label} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>{item.label}</Text>
-          </View>
-        ))}
-      </View>
     </View>
   );
 }

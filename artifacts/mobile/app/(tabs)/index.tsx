@@ -15,7 +15,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MapLayer } from "@/components/MapLayer";
-import { FilterBar } from "@/components/FilterBar";
 import { SearchBar } from "@/components/SearchBar";
 import { useColors } from "@/hooks/useColors";
 import { useLocations } from "@/contexts/LocationsContext";
@@ -36,22 +35,11 @@ export default function MapScreen() {
 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
   const mapRef = useRef<any>(null);
-  const filterAnim = useRef(new Animated.Value(0)).current;
 
   const results = filteredLocations(query);
-  const activeFilters = Object.values(filters).filter(Boolean).length;
 
   const WEB_TOP = Platform.OS === "web" ? 67 : 0;
-
-  useEffect(() => {
-    Animated.timing(filterAnim, {
-      toValue: showFilters ? 1 : 0,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-  }, [showFilters]);
 
   const handleMarkerPress = (id: string, lat: number, lng: number) => {
     setSelectedId(id);
@@ -95,46 +83,6 @@ export default function MapScreen() {
           <View style={styles.searchWrap}>
             <SearchBar value={query} onChangeText={setQuery} placeholder="Search locations..." />
           </View>
-          <TouchableOpacity
-            onPress={() => setShowFilters(!showFilters)}
-            style={[
-              styles.filterBtn,
-              {
-                backgroundColor: activeFilters > 0 ? colors.primary : colors.card,
-                borderColor: activeFilters > 0 ? colors.primary : colors.border,
-              },
-            ]}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="options" size={18} color={activeFilters > 0 ? "#fff" : colors.foreground} />
-            {activeFilters > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{activeFilters}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <Animated.View
-          style={[
-            styles.filterBarWrap,
-            {
-              opacity: filterAnim,
-              transform: [
-                { translateY: filterAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) },
-              ],
-            },
-          ]}
-          pointerEvents={showFilters ? "auto" : "none"}
-        >
-          <FilterBar filters={filters} onChange={setFilters} />
-        </Animated.View>
-
-        <View style={styles.countRow} pointerEvents="none">
-          <View style={[styles.countBadge, { backgroundColor: colors.card + "EE", borderColor: colors.border }]}>
-            <Ionicons name="location" size={12} color={colors.primary} />
-            <Text style={[styles.countText, { color: colors.foreground }]}>{results.length} locations</Text>
-          </View>
         </View>
       </View>
 
@@ -147,11 +95,13 @@ export default function MapScreen() {
         pointerEvents="box-none"
       >
         <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          style={styles.addBtn}
           onPress={() => router.push("/add-location")}
           activeOpacity={0.85}
         >
-          <Ionicons name="add" size={24} color="#fff" />
+          <View style={styles.addBtnInner}>
+            <Ionicons name="location" size={26} color="#EF4444" />
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -250,16 +200,21 @@ const styles = StyleSheet.create({
     right: 20,
   },
   addBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addBtnInner: {
     width: 52,
     height: 52,
     borderRadius: 26,
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     elevation: 6,
-    shadowColor: "#4A9EE0",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
   legend: {
     position: "absolute",

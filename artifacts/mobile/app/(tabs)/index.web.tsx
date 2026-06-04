@@ -11,7 +11,8 @@ import {
   useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
 import type { Map as LeafletMap } from "leaflet";
 import { useColors } from "@/hooks/useColors";
 import { useLocations } from "@/contexts/LocationsContext";
@@ -75,15 +76,18 @@ export default function MapScreen() {
           />
           {results.map((loc) => {
             const color = getRatingColor(loc.rating, loc.ratingCount);
+            const icon = L.divIcon({
+              html: `<svg width="14" height="20" viewBox="0 0 14 20" xmlns="http://www.w3.org/2000/svg"><path d="M7 0C3.134 0 0 3.134 0 7c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z" fill="${color}"/><circle cx="7" cy="7" r="2.5" fill="#fff"/></svg>`,
+              className: "",
+              iconSize: [14, 20],
+              iconAnchor: [7, 20],
+              popupAnchor: [0, -20],
+            });
             return (
-              <CircleMarker
+              <Marker
                 key={loc.id}
-                center={[loc.latitude, loc.longitude]}
-                radius={10}
-                fillColor={color}
-                color="#fff"
-                weight={2}
-                fillOpacity={1}
+                position={[loc.latitude, loc.longitude]}
+                icon={icon}
               >
                 <Popup>
                   <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
@@ -117,7 +121,7 @@ export default function MapScreen() {
                     </button>
                   </div>
                 </Popup>
-              </CircleMarker>
+              </Marker>
             );
           })}
         </MapContainer>

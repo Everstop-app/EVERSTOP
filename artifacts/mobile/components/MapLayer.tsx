@@ -93,30 +93,14 @@ export function MapLayer({
           tracksViewChanges={false}
           onPress={() => onMarkerPress(loc.id, loc.latitude, loc.longitude)}
         >
-          <View
-            style={[
-              styles.pin,
-              {
-                backgroundColor:
-                  selectedId === loc.id
-                    ? colors.primary
-                    : getRatingColor(loc.rating, loc.ratingCount),
-                borderColor: selectedId === loc.id ? "#fff" : "transparent",
-              },
-            ]}
-          >
-            <Ionicons name="business" size={12} color="#fff" />
-          </View>
-          <View
-            style={[
-              styles.pinTail,
-              {
-                borderTopColor:
-                  selectedId === loc.id
-                    ? colors.primary
-                    : getRatingColor(loc.rating, loc.ratingCount),
-              },
-            ]}
+          <Ionicons
+            name="location"
+            size={selectedId === loc.id ? 28 : 22}
+            color={
+              selectedId === loc.id
+                ? colors.primary
+                : getRatingColor(loc.rating, loc.ratingCount)
+            }
           />
           <Callout tooltip onPress={() => onCalloutPress(loc.id)}>
             <View

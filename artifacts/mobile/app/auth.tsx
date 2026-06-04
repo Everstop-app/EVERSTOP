@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState, useCallback, useMemo } from "react";
@@ -172,10 +173,11 @@ export default function AuthScreen() {
         </TouchableOpacity>
 
         <View style={styles.logoWrap}>
-          <View style={[styles.logo, { backgroundColor: colors.primary + "18" }]}>
-            <Ionicons name="location" size={40} color={colors.primary} />
-          </View>
-          <Text style={[styles.appName, { color: colors.foreground }]}>EverStop</Text>
+          <Image
+            source={require("@/assets/images/logo_transparent.png")}
+            style={styles.logoImg}
+            contentFit="contain"
+          />
           <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
             The community GPS for truck drivers
           </Text>
@@ -304,6 +306,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
   },
   logoWrap: { alignItems: "center", gap: 8 },
+  logoImg: { width: 220, height: 80 },
   logo: {
     width: 80,
     height: 80,

@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +17,96 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, AccountType } from "@/contexts/AuthContext";
+
+/* ──────────────────────────────── */
+/*  Top-level reusable field comps  */
+/* ──────────────────────────────── */
+
+const InputField = React.memo(function InputField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  secureTextEntry,
+  keyboardType,
+  autoCapitalize,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder: string;
+  secureTextEntry?: boolean;
+  keyboardType?: "default" | "email-address";
+  autoCapitalize?: "none" | "words";
+}) {
+  const colors = useColors();
+  const inputStyle = useMemo(() => [styles.input, { color: colors.foreground }], [colors.foreground]);
+  const rowStyle = useMemo(() => [styles.inputRow, { backgroundColor: colors.secondary, borderColor: colors.border }], [colors.secondary, colors.border]);
+  const labelStyle = useMemo(() => [styles.inputLabel, { color: colors.mutedForeground }], [colors.mutedForeground]);
+  return (
+    <View style={styles.inputWrap}>
+      <Text style={labelStyle}>{label}</Text>
+      <View style={rowStyle}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.mutedForeground}
+          style={inputStyle}
+          secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize ?? "none"}
+          autoCorrect={false}
+        />
+      </View>
+    </View>
+  );
+});
+
+const PasswordField = React.memo(function PasswordField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  showPassword,
+  setShowPassword,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder: string;
+  showPassword: boolean;
+  setShowPassword: (show: boolean) => void;
+}) {
+  const colors = useColors();
+  const inputStyle = useMemo(() => [styles.input, { color: colors.foreground }], [colors.foreground]);
+  const rowStyle = useMemo(() => [styles.inputRow, { backgroundColor: colors.secondary, borderColor: colors.border }], [colors.secondary, colors.border]);
+  const labelStyle = useMemo(() => [styles.inputLabel, { color: colors.mutedForeground }], [colors.mutedForeground]);
+  return (
+    <View style={styles.inputWrap}>
+      <Text style={labelStyle}>{label}</Text>
+      <View style={rowStyle}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.mutedForeground}
+          style={inputStyle}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+          <Ionicons name={showPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
+
+/* ──────────────────────────────── */
+/*  Main screen                     */
+/* ──────────────────────────────── */
 
 export default function AuthScreen() {
   const colors = useColors();
@@ -36,7 +127,7 @@ export default function AuthScreen() {
 
   const WEB_TOP = Platform.OS === "web" ? 67 : 0;
 
-  const onSubmit = async () => {
+  const onSubmit = useCallback(async () => {
     if (!email.trim() || !password.trim()) { setError("Please fill in all fields"); return; }
     if (mode === "register" && !name.trim()) { setError("Please enter your name"); return; }
     setError("");
@@ -56,42 +147,21 @@ export default function AuthScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [email, password, mode, name, accountType, login, register]);
 
-  const InputField = ({
-    label, value, onChangeText, placeholder, secureTextEntry, keyboardType, autoCapitalize,
-  }: any) => (
-    <View style={styles.inputWrap}>
-      <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <View style={[styles.inputRow, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.mutedForeground}
-          style={[styles.input, { color: colors.foreground }]}
-          secureTextEntry={secureTextEntry && !showPassword}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize ?? "none"}
-          autoCorrect={false}
-        />
-        {secureTextEntry && (
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-            <Ionicons name={showPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
+  const scrollPadding = useMemo(() => ({
+    paddingTop: insets.top + WEB_TOP + 20,
+    paddingBottom: 40,
+  }), [insets.top]);
+
+  const contentContainerStyle = useMemo(() => [styles.scroll, scrollPadding], [scrollPadding]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: insets.top + WEB_TOP + 20, paddingBottom: insets.bottom + 40 },
-        ]}
-        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={contentContainerStyle}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}
       >
         <TouchableOpacity
@@ -148,12 +218,13 @@ export default function AuthScreen() {
             keyboardType="email-address"
           />
 
-          <InputField
+          <PasswordField
             label="Password"
             value={password}
             onChangeText={setPassword}
             placeholder="Password"
-            secureTextEntry
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
           />
 
           {mode === "register" && (

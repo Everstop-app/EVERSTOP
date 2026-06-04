@@ -25,6 +25,7 @@ type MapLayerProps = {
   locations: Location[];
   selectedId: string | null;
   isDark: boolean;
+  mapType?: "standard" | "satellite";
   onMarkerPress: (id: string, lat: number, lng: number) => void;
   onCalloutPress: (id: string) => void;
 };
@@ -64,6 +65,7 @@ export function MapLayer({
   locations,
   selectedId,
   isDark,
+  mapType = "standard",
   onMarkerPress,
   onCalloutPress,
 }: MapLayerProps) {
@@ -74,7 +76,8 @@ export function MapLayer({
       ref={mapRef}
       style={StyleSheet.absoluteFill}
       provider={PROVIDER_DEFAULT}
-      customMapStyle={isDark ? DARK_MAP_STYLE : []}
+      mapType={mapType}
+      customMapStyle={isDark && mapType === "standard" ? DARK_MAP_STYLE : []}
       initialRegion={{
         latitude: 39.5,
         longitude: -98.35,

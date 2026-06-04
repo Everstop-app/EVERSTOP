@@ -35,6 +35,8 @@ export default function MapScreen() {
 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mapType, setMapType] = useState<"standard" | "satellite">("standard");
+  const [showLayerMenu, setShowLayerMenu] = useState(false);
   const mapRef = useRef<any>(null);
 
   const results = filteredLocations(query);
@@ -61,6 +63,7 @@ export default function MapScreen() {
         locations={results}
         selectedId={selectedId}
         isDark={isDark}
+        mapType={mapType}
         onMarkerPress={handleMarkerPress}
         onCalloutPress={navigateToLocation}
       />
@@ -82,6 +85,33 @@ export default function MapScreen() {
         <View style={styles.searchRow}>
           <View style={styles.searchWrap}>
             <SearchBar value={query} onChangeText={setQuery} placeholder="Search locations..." />
+          </View>
+          <View style={styles.layerBtnWrap}>
+            <TouchableOpacity
+              style={[styles.filterBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => setShowLayerMenu((v) => !v)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="layers" size={20} color={showLayerMenu ? colors.primary : colors.foreground} />
+            </TouchableOpacity>
+            {showLayerMenu && (
+              <View style={[styles.layerMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <TouchableOpacity
+                  style={[styles.layerItem, mapType === "standard" && { backgroundColor: colors.primary + "18" }]}
+                  onPress={() => { setMapType("standard"); setShowLayerMenu(false); }}
+                >
+                  <Ionicons name="map" size={15} color={mapType === "standard" ? colors.primary : colors.foreground} />
+                  <Text style={[styles.layerItemText, { color: mapType === "standard" ? colors.primary : colors.foreground }]}>Default</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.layerItem, mapType === "satellite" && { backgroundColor: colors.primary + "18" }]}
+                  onPress={() => { setMapType("satellite"); setShowLayerMenu(false); }}
+                >
+                  <Ionicons name="earth" size={15} color={mapType === "satellite" ? colors.primary : colors.foreground} />
+                  <Text style={[styles.layerItemText, { color: mapType === "satellite" ? colors.primary : colors.foreground }]}>Satellite</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -126,6 +156,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   searchWrap: { flex: 1 },
+  layerBtnWrap: { position: "relative" },
+  layerMenu: {
+    position: "absolute",
+    top: 48,
+    right: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    zIndex: 200,
+    minWidth: 140,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    overflow: "hidden",
+  },
+  layerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  layerItemText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   filterBtn: {
     width: 44,
     height: 44,

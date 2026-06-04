@@ -34,11 +34,14 @@ function getRatingColor(rating: number, ratingCount: number): string {
 
 const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const SATELLITE_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 export default function MapScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const [mapView, setMapView] = useState<"default" | "satellite">("default");
+  const [showLayerMenu, setShowLayerMenu] = useState(false);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const { filters, setFilters, filteredLocations } = useLocations();
@@ -71,7 +74,7 @@ export default function MapScreen() {
           zoomControl={false}
         >
           <TileLayer
-            url={isDark ? DARK_TILES : LIGHT_TILES}
+            url={mapView === "satellite" ? SATELLITE_TILES : (isDark ? DARK_TILES : LIGHT_TILES)}
             attribution={ATTRIBUTION}
           />
           {results.map((loc) => {
@@ -144,6 +147,33 @@ export default function MapScreen() {
           <View style={styles.searchWrap}>
             <SearchBar value={query} onChangeText={setQuery} placeholder="Search locations..." />
           </View>
+          <View style={styles.layerBtnWrap}>
+            <TouchableOpacity
+              style={[styles.filterBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => setShowLayerMenu((v) => !v)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="layers" size={20} color={showLayerMenu ? colors.primary : colors.foreground} />
+            </TouchableOpacity>
+            {showLayerMenu && (
+              <View style={[styles.layerMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <TouchableOpacity
+                  style={[styles.layerItem, mapView === "default" && { backgroundColor: colors.primary + "18" }]}
+                  onPress={() => { setMapView("default"); setShowLayerMenu(false); }}
+                >
+                  <Ionicons name="map" size={15} color={mapView === "default" ? colors.primary : colors.foreground} />
+                  <Text style={[styles.layerItemText, { color: mapView === "default" ? colors.primary : colors.foreground }]}>Default</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.layerItem, mapView === "satellite" && { backgroundColor: colors.primary + "18" }]}
+                  onPress={() => { setMapView("satellite"); setShowLayerMenu(false); }}
+                >
+                  <Ionicons name="earth" size={15} color={mapView === "satellite" ? colors.primary : colors.foreground} />
+                  <Text style={[styles.layerItemText, { color: mapView === "satellite" ? colors.primary : colors.foreground }]}>Satellite</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
@@ -184,6 +214,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   searchWrap: { flex: 1 },
+  layerBtnWrap: { position: "relative" },
+  layerMenu: {
+    position: "absolute",
+    top: 48,
+    right: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    zIndex: 200,
+    minWidth: 140,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    overflow: "hidden",
+  },
+  layerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  layerItemText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   filterBtn: {
     width: 44,
     height: 44,

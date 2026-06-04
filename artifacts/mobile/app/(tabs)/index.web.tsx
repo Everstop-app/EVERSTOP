@@ -35,6 +35,7 @@ function getRatingColor(rating: number, ratingCount: number): string {
 const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const SATELLITE_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const SATELLITE_LABELS_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 export default function MapScreen() {
@@ -95,6 +96,9 @@ export default function MapScreen() {
             url={mapView === "satellite" ? SATELLITE_TILES : (isDark ? DARK_TILES : LIGHT_TILES)}
             attribution={ATTRIBUTION}
           />
+          {mapView === "satellite" && (
+            <TileLayer url={SATELLITE_LABELS_TILES} attribution="" />
+          )}
           {droppedPin && (
             <Marker
               position={[droppedPin.lat, droppedPin.lng]}

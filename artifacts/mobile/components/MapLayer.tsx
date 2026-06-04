@@ -80,7 +80,7 @@ export function MapLayer({
       ref={mapRef}
       style={StyleSheet.absoluteFill}
       provider={PROVIDER_DEFAULT}
-      mapType={mapType}
+      mapType={mapType === "satellite" ? "hybrid" : mapType}
       customMapStyle={isDark && mapType === "standard" ? DARK_MAP_STYLE : []}
       initialRegion={{
         latitude: 39.5,

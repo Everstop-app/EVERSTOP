@@ -37,6 +37,8 @@ export default function MapScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mapType, setMapType] = useState<"standard" | "satellite">("standard");
   const [showLayerMenu, setShowLayerMenu] = useState(false);
+  const [droppingPin, setDroppingPin] = useState(false);
+  const [droppedPin, setDroppedPin] = useState<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<any>(null);
 
   const results = filteredLocations(query);
@@ -64,6 +66,8 @@ export default function MapScreen() {
         selectedId={selectedId}
         isDark={isDark}
         mapType={mapType}
+        droppedPin={droppedPin}
+        onMapPress={droppingPin ? (lat, lng) => { setDroppedPin({ lat, lng }); setDroppingPin(false); } : undefined}
         onMarkerPress={handleMarkerPress}
         onCalloutPress={navigateToLocation}
       />
@@ -116,6 +120,46 @@ export default function MapScreen() {
         </View>
       </View>
 
+      {/* Drop mode banner */}
+      {droppingPin && (
+        <View style={[styles.dropBanner, { backgroundColor: colors.primary }]} pointerEvents="none">
+          <Ionicons name="location" size={15} color="#fff" />
+          <Text style={styles.dropBannerText}>Tap anywhere on the map to drop a pin</Text>
+        </View>
+      )}
+
+      {/* Dropped pin card */}
+      {droppedPin && (
+        <View
+          style={[
+            styles.pinCard,
+            { backgroundColor: colors.card, borderColor: colors.border, bottom: insets.bottom + (Platform.OS === "web" ? 84 + 34 : 90) + 16 },
+          ]}
+        >
+          <View style={styles.pinCardHeader}>
+            <Ionicons name="location" size={18} color="#EF4444" />
+            <Text style={[styles.pinCardTitle, { color: colors.foreground }]}>Pin Dropped</Text>
+            <TouchableOpacity onPress={() => setDroppedPin(null)}>
+              <Ionicons name="close" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.pinCardCoords, { color: colors.mutedForeground }]}>
+            {droppedPin.lat.toFixed(5)}, {droppedPin.lng.toFixed(5)}
+          </Text>
+          <TouchableOpacity
+            style={[styles.pinCardBtn, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.selectionAsync();
+              router.push(`/add-location?prefill_lat=${droppedPin.lat}&prefill_lon=${droppedPin.lng}`);
+              setDroppedPin(null);
+            }}
+          >
+            <Ionicons name="business" size={15} color="#fff" />
+            <Text style={styles.pinCardBtnText}>Add Business Here</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Add button */}
       <View
         style={[
@@ -126,11 +170,14 @@ export default function MapScreen() {
       >
         <TouchableOpacity
           style={styles.addBtn}
-          onPress={() => router.push("/add-location")}
+          onPress={() => {
+            if (droppingPin) { setDroppingPin(false); }
+            else { setDroppedPin(null); setDroppingPin(true); }
+          }}
           activeOpacity={0.85}
         >
-          <View style={styles.addBtnInner}>
-            <Ionicons name="location" size={26} color="#EF4444" />
+          <View style={[styles.addBtnInner, droppingPin && { backgroundColor: "#EF4444" }]}>
+            <Ionicons name={droppingPin ? "close" : "location"} size={26} color={droppingPin ? "#fff" : "#EF4444"} />
           </View>
         </TouchableOpacity>
       </View>
@@ -224,6 +271,45 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_500Medium",
   },
+  dropBanner: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    top: 130,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  dropBannerText: { color: "#fff", fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
+  pinCard: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  pinCardHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  pinCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", flex: 1 },
+  pinCardCoords: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  pinCardBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  pinCardBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
   addBtnWrap: {
     position: "absolute",
     right: 20,

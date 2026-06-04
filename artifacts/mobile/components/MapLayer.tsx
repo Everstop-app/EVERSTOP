@@ -26,6 +26,8 @@ type MapLayerProps = {
   selectedId: string | null;
   isDark: boolean;
   mapType?: "standard" | "satellite";
+  droppedPin?: { lat: number; lng: number } | null;
+  onMapPress?: (lat: number, lng: number) => void;
   onMarkerPress: (id: string, lat: number, lng: number) => void;
   onCalloutPress: (id: string) => void;
 };
@@ -66,6 +68,8 @@ export function MapLayer({
   selectedId,
   isDark,
   mapType = "standard",
+  droppedPin,
+  onMapPress,
   onMarkerPress,
   onCalloutPress,
 }: MapLayerProps) {
@@ -88,7 +92,18 @@ export function MapLayer({
       showsMyLocationButton={false}
       showsCompass={false}
       toolbarEnabled={false}
+      onPress={(e) => {
+        if (onMapPress) onMapPress(e.nativeEvent.coordinate.latitude, e.nativeEvent.coordinate.longitude);
+      }}
     >
+      {droppedPin && (
+        <Marker
+          coordinate={{ latitude: droppedPin.lat, longitude: droppedPin.lng }}
+          tracksViewChanges={false}
+        >
+          <Ionicons name="location" size={38} color="#EF4444" />
+        </Marker>
+      )}
       {locations.map((loc) => (
         <Marker
           key={loc.id}

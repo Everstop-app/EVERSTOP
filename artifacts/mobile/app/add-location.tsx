@@ -248,15 +248,6 @@ export default function AddLocationScreen() {
                 ))}
               </ScrollView>
             </View>
-            <SectionTitle title="GPS Coordinates (optional)" />
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Field label="Latitude" value={latitude} onChangeText={setLatitude} placeholder="41.8827" keyboardType="decimal-pad" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Field label="Longitude" value={longitude} onChangeText={setLongitude} placeholder="-87.6233" keyboardType="decimal-pad" />
-              </View>
-            </View>
           </View>
         )}
 

@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -150,21 +149,17 @@ export default function AuthScreen() {
     }
   }, [email, password, mode, name, accountType, login, register]);
 
-  const scrollPadding = useMemo(() => ({
-    paddingTop: insets.top + WEB_TOP + 20,
-    paddingBottom: 40,
-  }), [insets.top]);
-
-  const contentContainerStyle = useMemo(() => [styles.scroll, scrollPadding], [scrollPadding]);
+  const innerPadding = useMemo(() => ({
+    paddingTop: insets.top + WEB_TOP + 10,
+    paddingBottom: insets.bottom + 16,
+  }), [insets.top, insets.bottom]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        contentContainerStyle={contentContainerStyle}
-        keyboardShouldPersistTaps="always"
-        keyboardDismissMode="none"
-        showsVerticalScrollIndicator={false}
-      >
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <View style={[styles.inner, innerPadding]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={[styles.closeBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
@@ -288,25 +283,28 @@ export default function AuthScreen() {
             </Text>
           )}
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { paddingHorizontal: 24, gap: 20 },
+  inner: { flex: 1, paddingHorizontal: 24, gap: 20, justifyContent: "center" },
   closeBtn: {
+    position: "absolute",
+    top: 0,
+    right: 24,
     width: 38,
     height: 38,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "flex-end",
+    zIndex: 10,
   },
   logoWrap: { alignItems: "center", gap: 8 },
-  logoImg: { width: 440, height: 160 },
+  logoImg: { width: 300, height: 110 },
   logo: {
     width: 80,
     height: 80,

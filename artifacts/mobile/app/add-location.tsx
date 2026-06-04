@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
-import React, { useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -42,18 +42,27 @@ export default function AddLocationScreen() {
   const insets = useSafeAreaInsets();
   const { addLocation } = useLocations();
   const { user, addPoints } = useAuth();
+  const params = useLocalSearchParams<{
+    prefill_address?: string;
+    prefill_city?: string;
+    prefill_state?: string;
+    prefill_zip?: string;
+    prefill_lat?: string;
+    prefill_lon?: string;
+    prefill_company?: string;
+  }>();
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  const [companyName, setCompanyName] = useState("");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zipCode, setZipCode] = useState("");
+  const [companyName, setCompanyName] = useState(params.prefill_company ?? "");
+  const [address, setAddress] = useState(params.prefill_address ?? "");
+  const [city, setCity] = useState(params.prefill_city ?? "");
+  const [state, setState] = useState(params.prefill_state ?? "");
+  const [zipCode, setZipCode] = useState(params.prefill_zip ?? "");
   const [category, setCategory] = useState("Distribution Center");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
+  const [latitude, setLatitude] = useState(params.prefill_lat ?? "");
+  const [longitude, setLongitude] = useState(params.prefill_lon ?? "");
 
   const [bestEntrance, setBestEntrance] = useState("");
   const [parkingAvailable, setParkingAvailable] = useState(true);

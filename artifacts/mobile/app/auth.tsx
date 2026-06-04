@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
   },
   logoWrap: { alignItems: "center", gap: 8 },
-  logoImg: { width: 220, height: 80 },
+  logoImg: { width: 440, height: 160 },
   logo: {
     width: 80,
     height: 80,

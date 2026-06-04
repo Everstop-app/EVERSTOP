@@ -1,141 +1,341 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  FlatList,
-  Platform,
+  Animated,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import type { Map as LeafletMap } from "leaflet";
 import { useColors } from "@/hooks/useColors";
 import { useLocations } from "@/contexts/LocationsContext";
-import { LocationCard } from "@/components/LocationCard";
 import { FilterBar } from "@/components/FilterBar";
 import { SearchBar } from "@/components/SearchBar";
+
+const RATING_COLORS: Record<string, string> = {
+  high: "#22C55E",
+  medium: "#F59E0B",
+  low: "#EF4444",
+  none: "#7A8CA0",
+};
+
+function getRatingColor(rating: number, ratingCount: number): string {
+  if (ratingCount === 0) return RATING_COLORS.none;
+  if (rating >= 4.0) return RATING_COLORS.high;
+  if (rating >= 3.0) return RATING_COLORS.medium;
+  return RATING_COLORS.low;
+}
+
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 export default function MapScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
   const { filters, setFilters, filteredLocations } = useLocations();
   const [query, setQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const filterAnim = useRef(new Animated.Value(0)).current;
+  const mapRef = useRef<LeafletMap | null>(null);
 
-  const WEB_TOP = Platform.OS === "web" ? 67 : 0;
   const results = filteredLocations(query);
   const activeFilters = Object.values(filters).filter(Boolean).length;
 
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    link.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
+    link.crossOrigin = "";
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, []);
+
+  useEffect(() => {
+    Animated.timing(filterAnim, {
+      toValue: showFilters ? 1 : 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [showFilters]);
+
+  const WEB_TOP = 67;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Leaflet map fills the entire screen */}
+      <View style={StyleSheet.absoluteFill}>
+        <MapContainer
+          center={[39.5, -98.35]}
+          zoom={4}
+          style={{ width: "100%", height: "100%" }}
+          ref={mapRef}
+          zoomControl={false}
+        >
+          <TileLayer
+            url={isDark ? DARK_TILES : LIGHT_TILES}
+            attribution={ATTRIBUTION}
+          />
+          {results.map((loc) => {
+            const color = getRatingColor(loc.rating, loc.ratingCount);
+            return (
+              <CircleMarker
+                key={loc.id}
+                center={[loc.latitude, loc.longitude]}
+                radius={10}
+                fillColor={color}
+                color="#fff"
+                weight={2}
+                fillOpacity={1}
+              >
+                <Popup>
+                  <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>
+                      {loc.companyName}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>
+                      {loc.city}, {loc.state}
+                    </div>
+                    <div style={{ fontSize: 12, marginBottom: 8 }}>
+                      ⭐ {loc.ratingCount > 0 ? loc.rating.toFixed(1) : "No ratings"}
+                      {loc.ratingCount > 0 && (
+                        <span style={{ color: "#9ca3af" }}> ({loc.ratingCount})</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => router.push(`/location/${loc.id}`)}
+                      style={{
+                        background: "#4A9EE0",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "6px 12px",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        width: "100%",
+                      }}
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            );
+          })}
+        </MapContainer>
+      </View>
+
+      {/* Search & filter overlay */}
       <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + WEB_TOP + 12,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
-        ]}
+        style={[styles.overlay, { paddingTop: insets.top + WEB_TOP + 8 }]}
+        pointerEvents="box-none"
       >
-        <View style={styles.titleRow}>
+        <View pointerEvents="none">
           <Image
             source={require("@/assets/images/logo_transparent.png")}
             style={styles.logoImg}
             contentFit="contain"
           />
+        </View>
+
+        <View style={styles.searchRow}>
+          <View style={styles.searchWrap}>
+            <SearchBar value={query} onChangeText={setQuery} placeholder="Search locations..." />
+          </View>
           <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
-            onPress={() => router.push("/add-location")}
-            activeOpacity={0.85}
+            onPress={() => setShowFilters(!showFilters)}
+            style={[
+              styles.filterBtn,
+              {
+                backgroundColor: activeFilters > 0 ? colors.primary : colors.card,
+                borderColor: activeFilters > 0 ? colors.primary : colors.border,
+              },
+            ]}
+            activeOpacity={0.8}
           >
-            <Ionicons name="add" size={18} color="#fff" />
-            <Text style={styles.addBtnText}>Add</Text>
+            <Ionicons name="options" size={18} color={activeFilters > 0 ? "#fff" : colors.foreground} />
+            {activeFilters > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilters}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
-        <View style={styles.mapNotice}>
-          <Ionicons name="phone-portrait-outline" size={14} color={colors.mutedForeground} />
-          <Text style={[styles.mapNoticeText, { color: colors.mutedForeground }]}>
-            Scan QR in the URL bar to see the full map on your phone
-          </Text>
-        </View>
-        <View style={styles.searchWrap}>
-          <SearchBar value={query} onChangeText={setQuery} placeholder="Search locations..." />
-        </View>
-        <View style={styles.filterWrap}>
+
+        <Animated.View
+          style={[
+            styles.filterBarWrap,
+            {
+              opacity: filterAnim,
+              transform: [
+                { translateY: filterAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) },
+              ],
+            },
+          ]}
+          pointerEvents={showFilters ? "auto" : "none"}
+        >
           <FilterBar filters={filters} onChange={setFilters} />
+        </Animated.View>
+
+        <View style={styles.countRow} pointerEvents="none">
+          <View style={[styles.countBadge, { backgroundColor: colors.card + "EE", borderColor: colors.border }]}>
+            <Ionicons name="location" size={12} color={colors.primary} />
+            <Text style={[styles.countText, { color: colors.foreground }]}>{results.length} locations</Text>
+          </View>
         </View>
-        <Text style={[styles.count, { color: colors.mutedForeground }]}>
-          {results.length} location{results.length !== 1 ? "s" : ""}
-          {activeFilters > 0 ? ` · ${activeFilters} filter${activeFilters !== 1 ? "s" : ""} active` : ""}
-        </Text>
       </View>
 
-      <FlatList
-        data={results}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <LocationCard location={item} />}
-        contentContainerStyle={[
-          styles.list,
-          { paddingBottom: insets.bottom + 84 + 34 },
+      {/* Add button */}
+      <View
+        style={[styles.addBtnWrap, { bottom: insets.bottom + 84 + 34 }]}
+        pointerEvents="box-none"
+      >
+        <TouchableOpacity
+          style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          onPress={() => router.push("/add-location")}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Legend */}
+      <View
+        style={[
+          styles.legend,
+          {
+            backgroundColor: colors.card + "EE",
+            borderColor: colors.border,
+            bottom: insets.bottom + 84 + 34,
+            left: 16,
+          },
         ]}
-        scrollEnabled={!!results.length}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="location-outline" size={48} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No locations found</Text>
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              {activeFilters > 0 ? "Try removing some filters" : "Try a different search term"}
-            </Text>
+        pointerEvents="none"
+      >
+        {[
+          { color: RATING_COLORS.high, label: "4.0+" },
+          { color: RATING_COLORS.medium, label: "3.0+" },
+          { color: RATING_COLORS.low, label: "<3.0" },
+          { color: RATING_COLORS.none, label: "New" },
+        ].map((item) => (
+          <View key={item.label} style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>{item.label}</Text>
           </View>
-        }
-      />
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    borderBottomWidth: 1,
-    paddingBottom: 10,
-    gap: 10,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 16,
+    gap: 8,
   },
-  logoImg: { width: 160, height: 52 },
-  addBtn: {
+  logoImg: { width: 150, height: 50 },
+  searchRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  searchWrap: { flex: 1 },
+  filterBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterBadgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+  },
+  filterBarWrap: {
+    marginHorizontal: -16,
+  },
+  countRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  countBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
   },
-  addBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  mapNotice: {
+  countText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  addBtnWrap: {
+    position: "absolute",
+    right: 20,
+  },
+  addBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#4A9EE0",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  legend: {
+    position: "absolute",
+    flexDirection: "row",
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
+    gap: 4,
   },
-  mapNoticeText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
-  searchWrap: { paddingHorizontal: 16 },
-  filterWrap: { marginHorizontal: -4 },
-  count: { fontSize: 12, fontFamily: "Inter_400Regular", paddingHorizontal: 16 },
-  list: { padding: 16 },
-  empty: {
-    alignItems: "center",
-    paddingTop: 80,
-    gap: 10,
-    paddingHorizontal: 32,
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", marginTop: 8 },
-  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  legendText: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+  },
 });

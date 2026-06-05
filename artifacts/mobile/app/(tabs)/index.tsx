@@ -59,7 +59,7 @@ export default function MapScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: "#FDF0EE" }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <MapLayer
         mapRef={mapRef}
         locations={results}

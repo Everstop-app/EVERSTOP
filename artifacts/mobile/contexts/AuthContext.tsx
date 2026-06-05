@@ -38,6 +38,7 @@ interface AuthContextType {
   toggleFavorite: (locationId: string) => void;
   upgradeToPremium: () => void;
   syncFromClerk: (clerkUser: any) => void;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const POINTS_FOR_RANK: Record<UserRank, number> = {
@@ -231,6 +232,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...updates };
+      AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+      if (prev.email) {
+        AsyncStorage.getItem(ACCOUNTS_KEY).then((data) => {
+          const accounts = data ? JSON.parse(data) : {};
+          accounts[prev.email] = updated;
+          AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+        });
+      }
+      return updated;
+    });
+  }, []);
+
   const syncFromClerk = useCallback((clerkUser: any) => {
     const clerkId = clerkUser?.id;
     const name = clerkUser?.fullName || clerkUser?.firstName || clerkUser?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "User";
@@ -258,7 +275,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, addPoints, toggleFavorite, upgradeToPremium, syncFromClerk }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, addPoints, toggleFavorite, upgradeToPremium, syncFromClerk, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

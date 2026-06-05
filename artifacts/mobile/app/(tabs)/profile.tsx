@@ -1,8 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React from "react";
 import {
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -44,7 +46,7 @@ const RANK_COLORS: Record<UserRank, string> = {
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { locations, filteredLocations } = useLocations();
 
   const WEB_TOP = Platform.OS === "web" ? 67 : 0;
@@ -101,11 +103,32 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + WEB_TOP + 16, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={styles.avatarRow}>
-          <View style={[styles.avatar, { backgroundColor: rankColor + "22", borderColor: rankColor }]}>
-            <Text style={[styles.avatarInitial, { color: rankColor }]}>
-              {user.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          <TouchableOpacity
+            onPress={async () => {
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+              });
+              if (!result.canceled && result.assets) {
+                updateUser({ imageUrl: result.assets[0].uri });
+              }
+            }}
+            style={[styles.avatar, { backgroundColor: rankColor + "22", borderColor: rankColor }]}
+            activeOpacity={0.85}
+          >
+            {user.imageUrl ? (
+              <Image source={{ uri: user.imageUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={[styles.avatarInitial, { color: rankColor }]}>
+                {user.name.charAt(0).toUpperCase()}
+              </Text>
+            )}
+            <View style={styles.avatarOverlay}>
+              <Ionicons name="camera" size={18} color="#fff" />
+            </View>
+          </TouchableOpacity>
           <View style={styles.nameBlock}>
             <Text style={[styles.name, { color: colors.foreground }]}>{user.name}</Text>
             <View style={styles.rankRow}>
@@ -263,6 +286,22 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+  },
+  avatarOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 24,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
   },

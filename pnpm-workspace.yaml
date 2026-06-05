@@ -158,3 +158,12 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+  # Security: fix CVE GHSA-w5hq-g745-h8pq (uuid missing buffer bounds check in v3/v5/v6)
+  # Pulled in by @expo/ngrok and xcode (via @expo/config-plugins)
+  uuid: ">=11.1.1"
+  # Security: fix CVE GHSA-qx2v-qp2m-jg93 (PostCSS XSS via unescaped </style>)
+  # Pulled in by @expo/metro-config
+  postcss: ">=8.5.10"
+  # Security: fix CVE GHSA-q8mj-m7cp-5q26 (qs DoS via qs.stringify with null entries)
+  # Pulled in by express (body-parser and express itself)
+  qs: ">=6.15.2"

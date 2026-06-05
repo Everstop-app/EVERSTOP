@@ -256,6 +256,16 @@ export default function LocationDetail() {
               {location.checkInLocation && <InfoRow icon="clipboard" label="Check-In" value={location.checkInLocation} />}
             </View>
 
+            {location.additionalInfo && (
+              <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.cardTitle, { color: colors.foreground }]}>Additional Information</Text>
+                <View style={[styles.instructions, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                  <Ionicons name="information-circle" size={16} color={colors.primary} />
+                  <Text style={[styles.instructionsText, { color: colors.foreground }]}>{location.additionalInfo}</Text>
+                </View>
+              </View>
+            )}
+
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>Delivery Information</Text>
               {location.receivingHours && <InfoRow icon="time" label="Receiving Hours" value={location.receivingHours} />}

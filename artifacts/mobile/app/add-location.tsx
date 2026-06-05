@@ -71,6 +71,7 @@ export default function AddLocationScreen() {
   const [parkingAvailable, setParkingAvailable] = useState(true);
   const [overnightParking, setOvernightParking] = useState(false);
   const [checkInLocation, setCheckInLocation] = useState("");
+  const [additionalInfo, setAdditionalInfo] = useState("");
   const [scaleAvailable, setScaleAvailable] = useState(false);
   const [turningDifficulty] = useState<TurningDifficulty>("moderate");
   const [easyBacking] = useState(false);
@@ -121,6 +122,7 @@ export default function AddLocationScreen() {
       requiresAppointment,
       contactPhone: contactPhone.trim() || undefined,
       specialInstructions: specialInstructions.trim() || undefined,
+      additionalInfo: additionalInfo.trim() || undefined,
       openAllDay,
       restroomsAvailable,
       submittedBy: user.id,
@@ -216,7 +218,6 @@ export default function AddLocationScreen() {
       >
         {step === 0 && (
           <View style={styles.formSection}>
-            <SectionTitle title="Business Details" />
             <Field label="Company Name *" value={companyName} onChangeText={setCompanyName} placeholder="Walmart Distribution Center" />
             <Field label="Street Address *" value={address} onChangeText={setAddress} placeholder="123 Industrial Blvd" />
             <View style={styles.row}>
@@ -305,6 +306,15 @@ export default function AddLocationScreen() {
 
             <Field label="Check-In Location" value={checkInLocation} onChangeText={setCheckInLocation} placeholder="Guard shack at main gate" />
 
+            <SectionTitle title="Additional Information" />
+            <Field
+              label="Additional Notes"
+              value={additionalInfo}
+              onChangeText={setAdditionalInfo}
+              placeholder="Any other details other drivers should know..."
+              multiline
+            />
+
             <View style={[styles.togglesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <ToggleRow label="Parking Available" value={parkingAvailable} onToggle={() => setParkingAvailable(!parkingAvailable)} icon="car" />
               <ToggleRow label="Overnight Parking" value={overnightParking} onToggle={() => setOvernightParking(!overnightParking)} icon="moon" />
@@ -315,7 +325,6 @@ export default function AddLocationScreen() {
 
         {step === 2 && (
           <View style={styles.formSection}>
-            <SectionTitle title="Receiving Information" />
             <Field label="Receiving Hours" value={receivingHours} onChangeText={setReceivingHours} placeholder="Mon-Fri 7AM-4PM, Sat 8AM-12PM" />
             <Field label="Contact Phone" value={contactPhone} onChangeText={setContactPhone} placeholder="(555) 000-0000" keyboardType="phone-pad" />
             <Field label="Special Instructions" value={specialInstructions} onChangeText={setSpecialInstructions} placeholder="Arrive 30 min early, bring BOL..." multiline />
@@ -414,7 +423,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
-  fieldInputMulti: { minHeight: 80, textAlignVertical: "top" },
+  fieldInputMulti: { minHeight: 120, textAlignVertical: "top" },
   categoryWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingVertical: 2 },
   catChip: {
     paddingHorizontal: 12,

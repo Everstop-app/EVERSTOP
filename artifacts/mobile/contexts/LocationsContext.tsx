@@ -36,6 +36,7 @@ export interface DeliveryLocation {
   requiresAppointment: boolean;
   contactPhone?: string;
   specialInstructions?: string;
+  additionalInfo?: string;
   rating: number;
   ratingCount: number;
   trustScore: number;

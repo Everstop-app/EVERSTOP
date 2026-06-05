@@ -33,7 +33,7 @@ const DIFFICULTY_TYPES: { value: TurningDifficulty; label: string; color: string
 ];
 
 const CATEGORIES = [
-  // Delivery type options removed per user request
+  "Dry Van", "Reefer", "Flatbed", "Bulk/Tanker", "Food & Beverage", "Containers",
 ];
 
 export default function AddLocationScreen() {
@@ -229,7 +229,7 @@ export default function AddLocationScreen() {
             </View>
             <View style={styles.fieldWrap}>
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Delivery type</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+              <View style={styles.categoryWrap}>
                 {CATEGORIES.map((cat) => (
                   <Pressable
                     key={cat}
@@ -245,7 +245,7 @@ export default function AddLocationScreen() {
                     <Text style={[styles.catChipText, { color: category === cat ? "#fff" : colors.mutedForeground }]}>{cat}</Text>
                   </Pressable>
                 ))}
-              </ScrollView>
+              </View>
             </View>
           </View>
         )}
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   fieldInputMulti: { minHeight: 80, textAlignVertical: "top" },
-  categoryRow: { gap: 8, paddingVertical: 2 },
+  categoryWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingVertical: 2 },
   catChip: {
     paddingHorizontal: 12,
     paddingVertical: 7,

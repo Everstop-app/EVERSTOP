@@ -292,8 +292,23 @@ export default function AddLocationScreen() {
                   }
                 }}
               >
+                <Ionicons name="images" size={20} color={colors.mutedForeground} />
+                <Text style={[styles.photoAddText, { color: colors.mutedForeground }]}>Choose Photos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.photoAddBtn}
+                onPress={async () => {
+                  const result = await ImagePicker.launchCameraAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    quality: 0.8,
+                  });
+                  if (!result.canceled && result.assets) {
+                    setPhotos((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+                  }
+                }}
+              >
                 <Ionicons name="camera" size={20} color={colors.mutedForeground} />
-                <Text style={[styles.photoAddText, { color: colors.mutedForeground }]}>Add</Text>
+                <Text style={[styles.photoAddText, { color: colors.mutedForeground }]}>Take Photo</Text>
               </TouchableOpacity>
             </View>
 

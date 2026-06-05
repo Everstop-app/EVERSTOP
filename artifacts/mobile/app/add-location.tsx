@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useLocations, DockType, TurningDifficulty } from "@/contexts/LocationsContext";
+import { useLocations, DockType, TurningDifficulty, DaySchedule } from "@/contexts/LocationsContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 const DIFFICULTY_TYPES: { value: TurningDifficulty; label: string; color: string }[] = [
@@ -77,8 +77,16 @@ export default function AddLocationScreen() {
   const [turningDifficulty] = useState<TurningDifficulty>("moderate");
   const [easyBacking] = useState(false);
 
-  const [receivingHours, setReceivingHours] = useState("");
   const [requiresAppointment, setRequiresAppointment] = useState(false);
+  const [daySchedule, setDaySchedule] = useState<DaySchedule>({
+    mon: { open: true, hours: "8AM - 5PM" },
+    tue: { open: true, hours: "8AM - 5PM" },
+    wed: { open: true, hours: "8AM - 5PM" },
+    thu: { open: true, hours: "8AM - 5PM" },
+    fri: { open: true, hours: "8AM - 5PM" },
+    sat: { open: false, hours: "" },
+    sun: { open: false, hours: "" },
+  });
   const [contactPhone, setContactPhone] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [openAllDay, setOpenAllDay] = useState(false);
@@ -119,7 +127,7 @@ export default function AddLocationScreen() {
       scaleAvailable,
       turningDifficulty,
       easyBacking,
-      receivingHours: receivingHours.trim() || undefined,
+      daySchedule: daySchedule,
       requiresAppointment,
       contactPhone: contactPhone.trim() || undefined,
       specialInstructions: specialInstructions.trim() || undefined,
@@ -172,6 +180,59 @@ export default function AddLocationScreen() {
       />
     </View>
   );
+
+  const DayScheduleEditor = ({ schedule, onChange, colors: themeColors }: { schedule: DaySchedule; onChange: (s: DaySchedule) => void; colors: any }) => {
+    const dayLabels: Record<string, string> = {
+      mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
+    };
+    const days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+
+    const updateDay = (day: string, open: boolean) => {
+      onChange({
+        ...schedule,
+        [day]: { ...schedule[day as keyof DaySchedule], open },
+      });
+    };
+
+    const updateHours = (day: string, hours: string) => {
+      onChange({
+        ...schedule,
+        [day]: { ...schedule[day as keyof DaySchedule], hours },
+      });
+    };
+
+    return (
+      <View style={[styles.scheduleCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+        <Text style={[styles.scheduleTitle, { color: themeColors.foreground }]}>Receiving Hours</Text>
+        {days.map((day) => (
+          <View key={day} style={styles.dayRow}>
+            <View style={styles.dayToggle}>
+              <Switch
+                value={schedule[day].open}
+                onValueChange={(v) => updateDay(day, v)}
+                trackColor={{ false: themeColors.muted, true: themeColors.primary + "66" }}
+                thumbColor={schedule[day].open ? themeColors.primary : themeColors.mutedForeground}
+              />
+              <Text style={[styles.dayLabel, { color: themeColors.foreground }]}>{dayLabels[day]}</Text>
+            </View>
+            {schedule[day].open ? (
+              <TextInput
+                value={schedule[day].hours}
+                onChangeText={(v) => updateHours(day, v)}
+                placeholder="8AM - 5PM"
+                placeholderTextColor={themeColors.mutedForeground}
+                style={[styles.dayInput, { color: themeColors.foreground, borderColor: themeColors.border, backgroundColor: themeColors.secondary }]}
+              />
+            ) : (
+              <View style={styles.dayInput}>
+                <Text style={[styles.closedText, { color: themeColors.mutedForeground }]}>Closed</Text>
+              </View>
+            )}
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -326,7 +387,7 @@ export default function AddLocationScreen() {
 
         {step === 2 && (
           <View style={styles.formSection}>
-            <Field label="Receiving Hours" value={receivingHours} onChangeText={setReceivingHours} placeholder="Mon-Fri 7AM-4PM, Sat 8AM-12PM" />
+            <DayScheduleEditor schedule={daySchedule} onChange={setDaySchedule} colors={colors} />
             <Field label="Contact Phone" value={contactPhone} onChangeText={setContactPhone} placeholder="(555) 000-0000" keyboardType="phone-pad" />
             <Field label="Special Instructions" value={specialInstructions} onChangeText={setSpecialInstructions} placeholder="Arrive 30 min early, bring BOL..." multiline />
 
@@ -519,4 +580,46 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   photoAddText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  scheduleCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+  },
+  scheduleTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 4,
+  },
+  dayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  dayToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    width: 100,
+  },
+  dayLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    width: 36,
+  },
+  dayInput: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    minHeight: 36,
+    justifyContent: "center",
+  },
+  closedText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
 });

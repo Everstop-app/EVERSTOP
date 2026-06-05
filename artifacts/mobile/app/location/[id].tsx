@@ -269,7 +269,28 @@ export default function LocationDetail() {
 
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>Delivery Information</Text>
-              {location.receivingHours && <InfoRow icon="time" label="Receiving Hours" value={location.receivingHours} />}
+              {location.daySchedule && (
+                <View style={{ gap: 6, marginBottom: 8 }}>
+                  {[
+                    { key: "mon", label: "Mon" },
+                    { key: "tue", label: "Tue" },
+                    { key: "wed", label: "Wed" },
+                    { key: "thu", label: "Thu" },
+                    { key: "fri", label: "Fri" },
+                    { key: "sat", label: "Sat" },
+                    { key: "sun", label: "Sun" },
+                  ].map((d) => {
+                    const day = location.daySchedule![d.key as keyof typeof location.daySchedule];
+                    if (!day || !day.open) return null;
+                    return (
+                      <View key={d.key} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground, width: 36 }}>{d.label}</Text>
+                        <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{day.hours}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
               <InfoRow icon="calendar" label="Appointment" value={location.requiresAppointment ? "Required" : "Walk-in OK"} />
               {location.contactPhone && <InfoRow icon="call" label="Contact" value={location.contactPhone} />}
               {location.specialInstructions && (

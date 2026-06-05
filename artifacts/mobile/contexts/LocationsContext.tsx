@@ -4,6 +4,16 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 export type TurningDifficulty = "easy" | "moderate" | "difficult";
 export type DockType = "dock-door" | "ground-level" | "drive-in" | "none";
 
+export interface DaySchedule {
+  mon: { open: boolean; hours: string };
+  tue: { open: boolean; hours: string };
+  wed: { open: boolean; hours: string };
+  thu: { open: boolean; hours: string };
+  fri: { open: boolean; hours: string };
+  sat: { open: boolean; hours: string };
+  sun: { open: boolean; hours: string };
+}
+
 export interface LocationComment {
   id: string;
   userId: string;
@@ -35,6 +45,7 @@ export interface DeliveryLocation {
   scaleAvailable: boolean;
   turningDifficulty: TurningDifficulty;
   receivingHours?: string;
+  daySchedule?: DaySchedule;
   requiresAppointment: boolean;
   contactPhone?: string;
   specialInstructions?: string;

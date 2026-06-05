@@ -301,7 +301,6 @@ export default function AddLocationScreen() {
               </TouchableOpacity>
             </View>
 
-            <SectionTitle title="Truck Access" />
             <Field label="Best Truck Entrance" value={bestEntrance} onChangeText={setBestEntrance} placeholder="South entrance off Main St, follow yellow arrows" multiline />
 
             <Field label="Check-In Location" value={checkInLocation} onChangeText={setCheckInLocation} placeholder="Guard shack at main gate" />

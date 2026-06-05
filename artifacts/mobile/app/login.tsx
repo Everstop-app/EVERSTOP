@@ -144,7 +144,7 @@ export default function LoginScreen() {
           ]}
         >
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
+            style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
             onPress={goLogin}
             activeOpacity={0.85}
           >
@@ -154,12 +154,12 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={[
               styles.secondaryBtn,
-              { backgroundColor: colors.background, borderColor: colors.accent },
+              { backgroundColor: colors.background, borderColor: colors.primary },
             ]}
             onPress={goSignUp}
             activeOpacity={0.85}
           >
-            <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>Sign Up</Text>
+            <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>Sign Up</Text>
           </TouchableOpacity>
 
           {/* Divider */}

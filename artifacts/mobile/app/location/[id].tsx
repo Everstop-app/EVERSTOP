@@ -218,9 +218,10 @@ export default function LocationDetail() {
             {/* Quick badges */}
             <View style={styles.quickBadges}>
               {[
+                { show: location.restroomsAvailable, icon: "water", label: "Restrooms", color: "#4A9EE0" },
+                { show: location.vendingMachines, icon: "fast-food", label: "Vending Machines", color: "#F59E0B" },
                 { show: location.overnightParking, icon: "moon", label: "Overnight Parking", color: "#4A9EE0" },
                 { show: location.scaleAvailable, icon: "scale-balance", label: "Scale Available", color: "#22C55E", material: true },
-                { show: location.restroomsAvailable, icon: "water", label: "Restrooms", color: "#4A9EE0" },
                 { show: location.openAllDay, icon: "time", label: "Open 24/7", color: "#22C55E" },
                 { show: location.requiresAppointment, icon: "calendar", label: "Appt Required", color: "#F59E0B" },
                 { show: location.parkingAvailable, icon: "car", label: "Parking", color: "#4A9EE0" },

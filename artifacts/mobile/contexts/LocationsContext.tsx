@@ -25,7 +25,9 @@ export interface DeliveryLocation {
   category: string;
   categoryColor?: string;
   bestEntrance?: string;
-  parkingAvailable: boolean;
+  parkingAvailable?: boolean;
+  restroomsAvailable: boolean;
+  vendingMachines?: boolean;
   overnightParking: boolean;
   dockNumber?: string;
   dockType?: DockType;
@@ -47,7 +49,6 @@ export interface DeliveryLocation {
   comments: LocationComment[];
   photos?: string[];
   openAllDay: boolean;
-  restroomsAvailable: boolean;
   easyBacking: boolean;
   highRating: boolean;
 }

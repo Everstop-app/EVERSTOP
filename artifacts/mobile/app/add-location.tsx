@@ -68,7 +68,8 @@ export default function AddLocationScreen() {
   const [longitude, setLongitude] = useState(params.prefill_lon ?? "");
 
   const [bestEntrance, setBestEntrance] = useState("");
-  const [parkingAvailable, setParkingAvailable] = useState(true);
+  const [restroomsAvailable, setRestroomsAvailable] = useState(false);
+  const [vendingMachines, setVendingMachines] = useState(false);
   const [overnightParking, setOvernightParking] = useState(false);
   const [checkInLocation, setCheckInLocation] = useState("");
   const [additionalInfo, setAdditionalInfo] = useState("");
@@ -81,7 +82,6 @@ export default function AddLocationScreen() {
   const [contactPhone, setContactPhone] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [openAllDay, setOpenAllDay] = useState(false);
-  const [restroomsAvailable, setRestroomsAvailable] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
 
   const WEB_TOP = Platform.OS === "web" ? 67 : 0;
@@ -112,7 +112,8 @@ export default function AddLocationScreen() {
       latitude: parseFloat(latitude) || 39.5,
       longitude: parseFloat(longitude) || -98.35,
       bestEntrance: bestEntrance.trim() || undefined,
-      parkingAvailable,
+      restroomsAvailable,
+      vendingMachines,
       overnightParking,
       checkInLocation: checkInLocation.trim() || undefined,
       scaleAvailable,
@@ -124,7 +125,6 @@ export default function AddLocationScreen() {
       specialInstructions: specialInstructions.trim() || undefined,
       additionalInfo: additionalInfo.trim() || undefined,
       openAllDay,
-      restroomsAvailable,
       submittedBy: user.id,
       submittedByName: user.name,
     });
@@ -316,7 +316,8 @@ export default function AddLocationScreen() {
             />
 
             <View style={[styles.togglesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <ToggleRow label="Parking Available" value={parkingAvailable} onToggle={() => setParkingAvailable(!parkingAvailable)} icon="car" />
+              <ToggleRow label="Restrooms" value={restroomsAvailable} onToggle={() => setRestroomsAvailable(!restroomsAvailable)} icon="water" />
+              <ToggleRow label="Vending Machines" value={vendingMachines} onToggle={() => setVendingMachines(!vendingMachines)} icon="fast-food" />
               <ToggleRow label="Overnight Parking" value={overnightParking} onToggle={() => setOvernightParking(!overnightParking)} icon="moon" />
               <ToggleRow label="Scale Available" value={scaleAvailable} onToggle={() => setScaleAvailable(!scaleAvailable)} icon="scale" />
             </View>
@@ -332,7 +333,6 @@ export default function AddLocationScreen() {
             <View style={[styles.togglesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <ToggleRow label="Appointment Required" value={requiresAppointment} onToggle={() => setRequiresAppointment(!requiresAppointment)} icon="calendar" />
               <ToggleRow label="Open 24/7" value={openAllDay} onToggle={() => setOpenAllDay(!openAllDay)} icon="time" />
-              <ToggleRow label="Restrooms Available" value={restroomsAvailable} onToggle={() => setRestroomsAvailable(!restroomsAvailable)} icon="water" />
             </View>
 
             <View style={[styles.pointsNote, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "44" }]}>

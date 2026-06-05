@@ -38,14 +38,14 @@ function ClassicTabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarActiveTintColor: "#D22F30",
+        tabBarInactiveTintColor: "#CC6353",
         headerShown: false,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.card,
+          backgroundColor: isIOS ? "transparent" : "#FDF0EE",
           borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopColor: "#EBB8B8",
           elevation: 0,
           ...(isWeb ? { height: 84 } : {}),
         },
@@ -57,7 +57,7 @@ function ClassicTabLayout() {
               style={StyleSheet.absoluteFill}
             />
           ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.card }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FDF0EE" }]} />
           ) : null,
         tabBarLabelStyle: {
           fontSize: 10,

@@ -44,6 +44,7 @@ export interface DeliveryLocation {
   submittedBy: string;
   submittedByName: string;
   comments: LocationComment[];
+  photos?: string[];
   openAllDay: boolean;
   restroomsAvailable: boolean;
   easyBacking: boolean;

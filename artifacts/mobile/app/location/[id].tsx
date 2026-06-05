@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -234,6 +235,17 @@ export default function LocationDetail() {
                 </View>
               ))}
             </View>
+
+            {location.photos && location.photos.length > 0 && (
+              <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.cardTitle, { color: colors.foreground }]}>Photos</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoGallery}>
+                  {location.photos.map((uri, i) => (
+                    <Image key={i} source={{ uri }} style={styles.photoThumb} />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>Truck Information</Text>
@@ -507,4 +519,6 @@ const styles = StyleSheet.create({
   commenterName: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   commentDate: { fontSize: 11, fontFamily: "Inter_400Regular" },
   commentText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  photoGallery: { gap: 10, paddingVertical: 2 },
+  photoThumb: { width: 120, height: 120, borderRadius: 12 },
 });

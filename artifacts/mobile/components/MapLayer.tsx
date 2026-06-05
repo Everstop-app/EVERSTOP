@@ -18,6 +18,8 @@ export type Location = {
   longitude: number;
   rating: number;
   ratingCount: number;
+  category?: string;
+  categoryColor?: string;
 };
 
 type MapLayerProps = {

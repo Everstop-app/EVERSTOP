@@ -1,9 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -88,6 +90,7 @@ export default function AddLocationScreen() {
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [openAllDay, setOpenAllDay] = useState(false);
   const [restroomsAvailable, setRestroomsAvailable] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const WEB_TOP = Platform.OS === "web" ? 67 : 0;
   const steps = ["General", "Truck Info", "Delivery Info"];
@@ -113,6 +116,7 @@ export default function AddLocationScreen() {
       zipCode: zipCode.trim(),
       category,
       categoryColor: CATEGORY_COLORS[category] ?? colors.primary,
+      photos,
       latitude: parseFloat(latitude) || 39.5,
       longitude: parseFloat(longitude) || -98.35,
       bestEntrance: bestEntrance.trim() || undefined,
@@ -262,6 +266,37 @@ export default function AddLocationScreen() {
 
         {step === 1 && (
           <View style={styles.formSection}>
+            <SectionTitle title="Add Photos" />
+            <View style={styles.photosWrap}>
+              {photos.map((uri, i) => (
+                <View key={uri + i} style={styles.photoThumb}>
+                  <Image source={{ uri }} style={styles.photoImg} />
+                  <TouchableOpacity
+                    style={styles.photoRemove}
+                    onPress={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                  >
+                    <Ionicons name="close" size={12} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={styles.photoAddBtn}
+                onPress={async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsMultipleSelection: true,
+                    quality: 0.8,
+                  });
+                  if (!result.canceled && result.assets) {
+                    setPhotos((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+                  }
+                }}
+              >
+                <Ionicons name="camera" size={20} color={colors.mutedForeground} />
+                <Text style={[styles.photoAddText, { color: colors.mutedForeground }]}>Add</Text>
+              </TouchableOpacity>
+            </View>
+
             <SectionTitle title="Truck Access" />
             <Field label="Best Truck Entrance" value={bestEntrance} onChangeText={setBestEntrance} placeholder="South entrance off Main St, follow yellow arrows" multiline />
 
@@ -482,4 +517,40 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   nextBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  photosWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    paddingVertical: 2,
+  },
+  photoThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+  },
+  photoImg: { width: 72, height: 72, borderRadius: 12 },
+  photoRemove: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoAddBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  photoAddText: { fontSize: 11, fontFamily: "Inter_500Medium" },
 });

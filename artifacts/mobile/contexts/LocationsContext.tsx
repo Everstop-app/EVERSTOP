@@ -28,7 +28,7 @@ export interface DeliveryLocation {
   parkingAvailable: boolean;
   overnightParking: boolean;
   dockNumber?: string;
-  dockType: DockType;
+  dockType?: DockType;
   checkInLocation?: string;
   scaleAvailable: boolean;
   turningDifficulty: TurningDifficulty;

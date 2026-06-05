@@ -21,13 +21,6 @@ import { useColors } from "@/hooks/useColors";
 import { useLocations, DockType, TurningDifficulty } from "@/contexts/LocationsContext";
 import { useAuth } from "@/contexts/AuthContext";
 
-const DOCK_TYPES: { value: DockType; label: string }[] = [
-  { value: "dock-door", label: "Dock Door" },
-  { value: "ground-level", label: "Ground Level" },
-  { value: "drive-in", label: "Drive-In" },
-  { value: "none", label: "None" },
-];
-
 const DIFFICULTY_TYPES: { value: TurningDifficulty; label: string; color: string }[] = [
   { value: "easy", label: "Easy", color: "#22C55E" },
   { value: "moderate", label: "Moderate", color: "#F59E0B" },
@@ -77,12 +70,10 @@ export default function AddLocationScreen() {
   const [bestEntrance, setBestEntrance] = useState("");
   const [parkingAvailable, setParkingAvailable] = useState(true);
   const [overnightParking, setOvernightParking] = useState(false);
-  const [dockNumber, setDockNumber] = useState("");
-  const [dockType, setDockType] = useState<DockType>("dock-door");
   const [checkInLocation, setCheckInLocation] = useState("");
   const [scaleAvailable, setScaleAvailable] = useState(false);
-  const [turningDifficulty, setTurningDifficulty] = useState<TurningDifficulty>("moderate");
-  const [easyBacking, setEasyBacking] = useState(false);
+  const [turningDifficulty] = useState<TurningDifficulty>("moderate");
+  const [easyBacking] = useState(false);
 
   const [receivingHours, setReceivingHours] = useState("");
   const [requiresAppointment, setRequiresAppointment] = useState(false);
@@ -122,8 +113,6 @@ export default function AddLocationScreen() {
       bestEntrance: bestEntrance.trim() || undefined,
       parkingAvailable,
       overnightParking,
-      dockNumber: dockNumber.trim() || undefined,
-      dockType,
       checkInLocation: checkInLocation.trim() || undefined,
       scaleAvailable,
       turningDifficulty,
@@ -315,49 +304,6 @@ export default function AddLocationScreen() {
             <SectionTitle title="Truck Access" />
             <Field label="Best Truck Entrance" value={bestEntrance} onChangeText={setBestEntrance} placeholder="South entrance off Main St, follow yellow arrows" multiline />
 
-            <View style={styles.fieldWrap}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Backing Difficulty</Text>
-              <View style={styles.diffRow}>
-                {DIFFICULTY_TYPES.map((d) => (
-                  <Pressable
-                    key={d.value}
-                    onPress={() => { setTurningDifficulty(d.value); setEasyBacking(d.value === "easy"); }}
-                    style={[
-                      styles.diffBtn,
-                      {
-                        backgroundColor: turningDifficulty === d.value ? d.color + "22" : colors.card,
-                        borderColor: turningDifficulty === d.value ? d.color : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.diffBtnText, { color: turningDifficulty === d.value ? d.color : colors.mutedForeground }]}>{d.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.fieldWrap}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Dock Type</Text>
-              <View style={styles.dockRow}>
-                {DOCK_TYPES.map((d) => (
-                  <Pressable
-                    key={d.value}
-                    onPress={() => setDockType(d.value)}
-                    style={[
-                      styles.dockBtn,
-                      {
-                        backgroundColor: dockType === d.value ? colors.primary + "18" : colors.card,
-                        borderColor: dockType === d.value ? colors.primary : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.dockBtnText, { color: dockType === d.value ? colors.primary : colors.mutedForeground }]}>{d.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            <Field label="Dock Numbers" value={dockNumber} onChangeText={setDockNumber} placeholder="1-50, A-section" />
             <Field label="Check-In Location" value={checkInLocation} onChangeText={setCheckInLocation} placeholder="Guard shack at main gate" />
 
             <View style={[styles.togglesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -481,9 +427,6 @@ const styles = StyleSheet.create({
   diffRow: { flexDirection: "row", gap: 10 },
   diffBtn: { flex: 1, borderRadius: 10, borderWidth: 1, paddingVertical: 10, alignItems: "center" },
   diffBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  dockRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  dockBtn: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
-  dockBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   togglesCard: {
     borderRadius: 14,
     borderWidth: 1,

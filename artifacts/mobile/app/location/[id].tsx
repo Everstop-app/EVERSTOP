@@ -251,7 +251,7 @@ export default function LocationDetail() {
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>Truck Information</Text>
               {location.bestEntrance && <InfoRow icon="enter" label="Best Entrance" value={location.bestEntrance} />}
               <InfoRow icon="navigate" label="Backing Difficulty" value={diff.label} color={diff.color} />
-              <InfoRow icon="cube" label="Dock Type" value={location.dockType.replace("-", " ")} />
+              {location.dockType && <InfoRow icon="cube" label="Dock Type" value={location.dockType.replace("-", " ")} />}
               {location.dockNumber && <InfoRow icon="grid" label="Dock Numbers" value={location.dockNumber} />}
               {location.checkInLocation && <InfoRow icon="clipboard" label="Check-In" value={location.checkInLocation} />}
             </View>

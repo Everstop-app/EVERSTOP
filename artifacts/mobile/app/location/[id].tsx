@@ -144,17 +144,6 @@ export default function LocationDetail() {
             ))}
           </View>
 
-          {location.photos && location.photos.length > 0 && (
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Photos</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoGallery}>
-                {location.photos.map((uri, i) => (
-                  <Image key={i} source={{ uri }} style={styles.photoThumb} />
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Truck Information</Text>
             {location.bestEntrance && <InfoRow icon="enter" label="Best Entrance" value={location.bestEntrance} />}
@@ -197,10 +186,15 @@ export default function LocationDetail() {
             )}
             <InfoRow icon="calendar" label="Appointment" value={location.requiresAppointment ? "Required" : "Walk-in OK"} />
             {location.contactPhone && <InfoRow icon="call" label="Contact" value={location.contactPhone} />}
-            {location.specialInstructions && (
-              <View style={[styles.instructions, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-                <Ionicons name="information-circle" size={16} color={colors.primary} />
-                <Text style={[styles.instructionsText, { color: colors.foreground }]}>{location.specialInstructions}</Text>
+
+            {location.photos && location.photos.length > 0 && (
+              <View style={{ marginTop: 4 }}>
+                <Text style={[styles.infoLabel, { color: colors.mutedForeground, marginBottom: 6 }]}>Business Photos</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoGallery}>
+                  {location.photos.map((uri, i) => (
+                    <Image key={i} source={{ uri }} style={styles.photoThumb} />
+                  ))}
+                </ScrollView>
               </View>
             )}
           </View>

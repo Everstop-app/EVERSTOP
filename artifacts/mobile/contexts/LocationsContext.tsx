@@ -222,6 +222,11 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     requiresAppointment: false,
     contactPhone: "(713) 555-0445",
     specialInstructions: "Food safety compliance required. No pets. Clean cab inspection possible. Temp-controlled docks available.",
+    photos: [
+      "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1553413077-190dd305871c?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=400&h=400&fit=crop",
+    ],
     rating: 4.5,
     ratingCount: 389,
     trustScore: 97,
@@ -406,13 +411,13 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   useEffect(() => {
-    AsyncStorage.getItem("everstop_locations").then((data) => {
+    AsyncStorage.getItem("everstop_locations_v2").then((data) => {
       if (data) {
         const parsed = JSON.parse(data) as DeliveryLocation[];
         setLocations(parsed.length > 0 ? parsed : SEED_LOCATIONS);
       } else {
         setLocations(SEED_LOCATIONS);
-        AsyncStorage.setItem("everstop_locations", JSON.stringify(SEED_LOCATIONS));
+        AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(SEED_LOCATIONS));
       }
       setIsLoading(false);
     });
@@ -420,7 +425,7 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
 
   const saveLocations = useCallback(async (locs: DeliveryLocation[]) => {
     setLocations(locs);
-    await AsyncStorage.setItem("everstop_locations", JSON.stringify(locs));
+    await AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(locs));
   }, []);
 
   const addLocation = useCallback((loc: Omit<DeliveryLocation, "id" | "rating" | "ratingCount" | "trustScore" | "verificationScore" | "lastUpdated" | "comments" | "highRating" | "categoryColor"> & { categoryColor?: string }) => {
@@ -437,7 +442,7 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
     };
     setLocations((prev) => {
       const updated = [newLoc, ...prev];
-      AsyncStorage.setItem("everstop_locations", JSON.stringify(updated));
+      AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(updated));
       return updated;
     });
   }, []);
@@ -453,7 +458,7 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
         };
         return { ...loc, comments: [newComment, ...loc.comments] };
       });
-      AsyncStorage.setItem("everstop_locations", JSON.stringify(updated));
+      AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(updated));
       return updated;
     });
   }, []);
@@ -466,7 +471,7 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
         const newRating = (loc.rating * loc.ratingCount + rating) / newCount;
         return { ...loc, rating: Math.round(newRating * 10) / 10, ratingCount: newCount, highRating: newRating >= 4.0 };
       });
-      AsyncStorage.setItem("everstop_locations", JSON.stringify(updated));
+      AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(updated));
       return updated;
     });
   }, []);

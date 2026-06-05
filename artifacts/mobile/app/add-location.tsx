@@ -229,7 +229,7 @@ export default function AddLocationScreen() {
               </View>
             </View>
             <View style={styles.fieldWrap}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Category</Text>
+              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Delivery type</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
                 {CATEGORIES.map((cat) => (
                   <Pressable

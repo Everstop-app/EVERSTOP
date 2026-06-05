@@ -100,7 +100,7 @@ export default function LocationDetail() {
 
           <View style={styles.actionRow}>
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.primary, flex: 1.5 }]}
+              style={[styles.actionBtn, { backgroundColor: colors.primary, flex: 2, paddingHorizontal: 16 }]}
               onPress={onNavigate}
               activeOpacity={0.85}
             >

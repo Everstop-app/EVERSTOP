@@ -33,8 +33,7 @@ const DIFFICULTY_TYPES: { value: TurningDifficulty; label: string; color: string
 ];
 
 const CATEGORIES = [
-  "Distribution Center", "Fulfillment Center", "Retail", "Food & Beverage",
-  "Freight / Courier", "Manufacturing", "Cold Storage", "Other",
+  // Delivery type options removed per user request
 ];
 
 export default function AddLocationScreen() {

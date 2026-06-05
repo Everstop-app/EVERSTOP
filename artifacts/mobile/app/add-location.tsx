@@ -36,6 +36,15 @@ const CATEGORIES = [
   "Dry Van", "Reefer", "Flatbed", "Bulk/Tanker", "Food & Beverage", "Containers",
 ];
 
+const CATEGORY_COLORS: Record<string, string> = {
+  "Dry Van": "#D22F30",
+  "Reefer": "#3B82F6",
+  "Flatbed": "#F59E0B",
+  "Bulk/Tanker": "#22C55E",
+  "Food & Beverage": "#8B5CF6",
+  "Containers": "#06B6D4",
+};
+
 export default function AddLocationScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -59,7 +68,7 @@ export default function AddLocationScreen() {
   const [city, setCity] = useState(params.prefill_city ?? "");
   const [state, setState] = useState(params.prefill_state ?? "");
   const [zipCode, setZipCode] = useState(params.prefill_zip ?? "");
-  const [category, setCategory] = useState("Distribution Center");
+  const [category, setCategory] = useState("Dry Van");
   const [latitude, setLatitude] = useState(params.prefill_lat ?? "");
   const [longitude, setLongitude] = useState(params.prefill_lon ?? "");
 
@@ -103,6 +112,7 @@ export default function AddLocationScreen() {
       state: state.trim().toUpperCase(),
       zipCode: zipCode.trim(),
       category,
+      categoryColor: CATEGORY_COLORS[category] ?? colors.primary,
       latitude: parseFloat(latitude) || 39.5,
       longitude: parseFloat(longitude) || -98.35,
       bestEntrance: bestEntrance.trim() || undefined,
@@ -237,8 +247,8 @@ export default function AddLocationScreen() {
                     style={[
                       styles.catChip,
                       {
-                        backgroundColor: category === cat ? colors.primary : colors.card,
-                        borderColor: category === cat ? colors.primary : colors.border,
+                        backgroundColor: category === cat ? (CATEGORY_COLORS[cat] ?? colors.primary) : colors.card,
+                        borderColor: category === cat ? (CATEGORY_COLORS[cat] ?? colors.primary) : colors.border,
                       },
                     ]}
                   >

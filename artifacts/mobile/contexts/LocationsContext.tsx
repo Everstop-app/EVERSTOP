@@ -23,6 +23,7 @@ export interface DeliveryLocation {
   latitude: number;
   longitude: number;
   category: string;
+  categoryColor?: string;
   bestEntrance?: string;
   parkingAvailable: boolean;
   overnightParking: boolean;
@@ -376,7 +377,7 @@ interface LocationsContextType {
   isLoading: boolean;
   filters: FilterState;
   setFilters: (filters: FilterState) => void;
-  addLocation: (location: Omit<DeliveryLocation, "id" | "rating" | "ratingCount" | "trustScore" | "verificationScore" | "lastUpdated" | "comments" | "highRating">) => void;
+  addLocation: (location: Omit<DeliveryLocation, "id" | "rating" | "ratingCount" | "trustScore" | "verificationScore" | "lastUpdated" | "comments" | "highRating" | "categoryColor"> & { categoryColor?: string }) => void;
   addComment: (locationId: string, comment: Omit<LocationComment, "id" | "date">) => void;
   rateLocation: (locationId: string, rating: number) => void;
   getLocation: (id: string) => DeliveryLocation | undefined;
@@ -408,7 +409,7 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem("everstop_locations", JSON.stringify(locs));
   }, []);
 
-  const addLocation = useCallback((loc: Omit<DeliveryLocation, "id" | "rating" | "ratingCount" | "trustScore" | "verificationScore" | "lastUpdated" | "comments" | "highRating">) => {
+  const addLocation = useCallback((loc: Omit<DeliveryLocation, "id" | "rating" | "ratingCount" | "trustScore" | "verificationScore" | "lastUpdated" | "comments" | "highRating" | "categoryColor"> & { categoryColor?: string }) => {
     const newLoc: DeliveryLocation = {
       ...loc,
       id: "loc_" + Date.now().toString() + Math.random().toString(36).substr(2, 5),

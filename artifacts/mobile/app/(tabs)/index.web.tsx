@@ -25,7 +25,9 @@ const RATING_COLORS: Record<string, string> = {
   none: "#7A8CA0",
 };
 
-function getRatingColor(rating: number, ratingCount: number): string {
+function getPinColor(loc: any): string {
+  if (loc.categoryColor) return loc.categoryColor;
+  const { rating, ratingCount } = loc;
   if (ratingCount === 0) return RATING_COLORS.none;
   if (rating >= 4.0) return RATING_COLORS.high;
   if (rating >= 3.0) return RATING_COLORS.medium;
@@ -111,7 +113,7 @@ export default function MapScreen() {
             />
           )}
           {results.map((loc) => {
-            const color = getRatingColor(loc.rating, loc.ratingCount);
+            const color = getPinColor(loc);
             const icon = L.divIcon({
               html: `<svg width="14" height="20" viewBox="0 0 14 20" xmlns="http://www.w3.org/2000/svg"><path d="M7 0C3.134 0 0 3.134 0 7c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z" fill="${color}"/><circle cx="7" cy="7" r="2.5" fill="#fff"/></svg>`,
               className: "",

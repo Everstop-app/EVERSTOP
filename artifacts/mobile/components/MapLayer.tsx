@@ -55,7 +55,9 @@ const RATING_COLORS: Record<string, string> = {
   none: "#7A8CA0",
 };
 
-function getRatingColor(rating: number, ratingCount: number): string {
+function getPinColor(location: Location): string {
+  if (location.categoryColor) return location.categoryColor;
+  const { rating, ratingCount } = location;
   if (ratingCount === 0) return RATING_COLORS.none;
   if (rating >= 4.0) return RATING_COLORS.high;
   if (rating >= 3.0) return RATING_COLORS.medium;
@@ -117,7 +119,7 @@ export function MapLayer({
             color={
               selectedId === loc.id
                 ? colors.primary
-                : getRatingColor(loc.rating, loc.ratingCount)
+                : getPinColor(loc)
             }
           />
           <Callout tooltip onPress={() => onCalloutPress(loc.id)}>

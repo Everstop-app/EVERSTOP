@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 
 export type TurningDifficulty = "easy" | "moderate" | "difficult";
 export type DockType = "dock-door" | "ground-level" | "drive-in" | "none";
+export type AccessPointType = "entrance" | "dock" | "parking" | "scale" | "office" | "fuel";
 
 export interface DaySchedule {
   mon: { open: boolean; hours: string };
@@ -21,6 +22,12 @@ export interface LocationComment {
   text: string;
   date: string;
   rating: number;
+}
+
+export interface AccessPoint {
+  type: AccessPointType;
+  label: string;
+  description: string;
 }
 
 export interface DeliveryLocation {
@@ -54,6 +61,8 @@ export interface DeliveryLocation {
   ratingCount: number;
   trustScore: number;
   verificationScore: number;
+  upvotes: number;
+  reportCount: number;
   lastUpdated: string;
   submittedBy: string;
   submittedByName: string;
@@ -62,6 +71,7 @@ export interface DeliveryLocation {
   openAllDay: boolean;
   easyBacking: boolean;
   highRating: boolean;
+  accessPoints?: AccessPoint[];
 }
 
 export interface FilterState {
@@ -96,7 +106,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     zipCode: "60804",
     latitude: 41.8330,
     longitude: -87.7575,
-    category: "Distribution Center",
+    category: "Dry Van",
+    categoryColor: "#D22F30",
     bestEntrance: "South entrance off Cicero Ave, follow yellow arrows to docks 1-50",
     parkingAvailable: true,
     overnightParking: true,
@@ -113,6 +124,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     ratingCount: 287,
     trustScore: 94,
     verificationScore: 98,
+    upvotes: 142,
+    reportCount: 2,
     lastUpdated: "2024-01-15",
     submittedBy: "user_drv1",
     submittedByName: "TruckMaster_Dave",
@@ -124,6 +137,13 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     restroomsAvailable: true,
     easyBacking: true,
     highRating: true,
+    accessPoints: [
+      { type: "entrance", label: "Main Truck Gate", description: "South entrance off Cicero Ave — semi trucks only, follow yellow arrows" },
+      { type: "office", label: "Check-In Guard Shack", description: "Main gate shack, bring BOL and appointment confirmation" },
+      { type: "dock", label: "Docks 1–120", description: "Follow yellow lane markings to assigned dock number" },
+      { type: "scale", label: "Inbound Scale", description: "Scale located just inside main gate, mandatory for inbound loads" },
+      { type: "parking", label: "East Lot Overnight Parking", description: "Large overnight lot east side, no hookups, safe and lit" },
+    ],
   },
   {
     id: "loc_002",
@@ -134,7 +154,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     zipCode: "76052",
     latitude: 32.9782,
     longitude: -97.3394,
-    category: "Fulfillment Center",
+    category: "Dry Van",
+    categoryColor: "#D22F30",
     bestEntrance: "West entrance only for semis. East entrance is passenger vehicles.",
     parkingAvailable: true,
     overnightParking: false,
@@ -151,6 +172,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     ratingCount: 512,
     trustScore: 91,
     verificationScore: 97,
+    upvotes: 89,
+    reportCount: 5,
     lastUpdated: "2024-01-12",
     submittedBy: "user_drv2",
     submittedByName: "Highway_Sam",
@@ -161,6 +184,12 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     restroomsAvailable: true,
     easyBacking: true,
     highRating: false,
+    accessPoints: [
+      { type: "entrance", label: "West Truck Entrance", description: "West gate ONLY for semis — east gate will turn you around" },
+      { type: "office", label: "Amazon Relay Kiosk", description: "Kiosk inside guard booth, must check in via Amazon Relay app first" },
+      { type: "dock", label: "Docks 200–350", description: "Dock assignment given at check-in kiosk" },
+      { type: "parking", label: "Staging Lot", description: "Staging area west of guard booth, no overnight, max 2 hrs" },
+    ],
   },
   {
     id: "loc_003",
@@ -171,7 +200,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     zipCode: "90006",
     latitude: 34.0418,
     longitude: -118.2892,
-    category: "Retail",
+    category: "Flatbed",
+    categoryColor: "#F59E0B",
     bestEntrance: "Loading dock behind store, access from Hooper Ave",
     parkingAvailable: false,
     overnightParking: false,
@@ -188,6 +218,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     ratingCount: 143,
     trustScore: 78,
     verificationScore: 85,
+    upvotes: 18,
+    reportCount: 12,
     lastUpdated: "2024-01-09",
     submittedBy: "user_drv3",
     submittedByName: "WestCoast_Carlos",
@@ -199,6 +231,10 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     restroomsAvailable: false,
     easyBacking: false,
     highRating: false,
+    accessPoints: [
+      { type: "entrance", label: "Hooper Ave Dock Access", description: "Approach from Hooper Ave heading SOUTH — do NOT attempt from Pico Blvd in a 53ft" },
+      { type: "dock", label: "Docks 1–4", description: "Ring bell at dock 1, extremely tight — recommend using a spotter" },
+    ],
   },
   {
     id: "loc_004",
@@ -209,7 +245,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     zipCode: "77057",
     latitude: 29.7561,
     longitude: -95.5368,
-    category: "Food & Beverage",
+    category: "Reefer",
+    categoryColor: "#3B82F6",
     bestEntrance: "Main gate off San Felipe, scale just inside gate",
     parkingAvailable: true,
     overnightParking: true,
@@ -231,6 +268,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     ratingCount: 389,
     trustScore: 97,
     verificationScore: 99,
+    upvotes: 201,
+    reportCount: 1,
     lastUpdated: "2024-01-14",
     submittedBy: "user_drv4",
     submittedByName: "Southern_Routes_Jim",
@@ -241,6 +280,13 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     restroomsAvailable: true,
     easyBacking: true,
     highRating: true,
+    accessPoints: [
+      { type: "entrance", label: "Main Gate – San Felipe", description: "Main gate entrance off San Felipe Blvd, scale just inside" },
+      { type: "scale", label: "Weigh In/Out Scale", description: "Mandatory weigh in and out at scale house — bring paperwork" },
+      { type: "dock", label: "Temp-Controlled Docks 1–75", description: "Reefer docks, keep refer running until dock assignment confirmed" },
+      { type: "parking", label: "Overnight Lot", description: "Safe overnight parking available, well lit, security patrols" },
+      { type: "office", label: "Receiving Office", description: "Inside main building, bring clean bill of lading for food compliance" },
+    ],
   },
   {
     id: "loc_005",
@@ -251,7 +297,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     zipCode: "55421",
     latitude: 45.0275,
     longitude: -93.2541,
-    category: "Distribution Center",
+    category: "Dry Van",
+    categoryColor: "#D22F30",
     bestEntrance: "Central Ave entrance, follow green signs to inbound docks",
     parkingAvailable: true,
     overnightParking: false,
@@ -268,6 +315,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     ratingCount: 256,
     trustScore: 90,
     verificationScore: 94,
+    upvotes: 67,
+    reportCount: 3,
     lastUpdated: "2024-01-11",
     submittedBy: "user_drv5",
     submittedByName: "NorthStar_Trucker",
@@ -276,6 +325,12 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     restroomsAvailable: true,
     easyBacking: false,
     highRating: true,
+    accessPoints: [
+      { type: "entrance", label: "Central Ave Inbound Gate", description: "Follow green signs after gate, inbound only lane" },
+      { type: "office", label: "Inbound Check-In Office", description: "Dock A building, present ID and appointment confirmation" },
+      { type: "dock", label: "Docks A1–A80", description: "Lumper service required most loads, coordinate at check-in office" },
+      { type: "scale", label: "Inbound Scale", description: "Scale on inbound road, mandatory before dock assignment" },
+    ],
   },
   {
     id: "loc_006",
@@ -287,6 +342,7 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     latitude: 35.0514,
     longitude: -89.9455,
     category: "Freight / Courier",
+    categoryColor: "#8B5CF6",
     bestEntrance: "Truck entrance off Winchester Rd, bypass passenger entrance",
     parkingAvailable: true,
     overnightParking: false,
@@ -303,6 +359,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     ratingCount: 621,
     trustScore: 95,
     verificationScore: 98,
+    upvotes: 178,
+    reportCount: 2,
     lastUpdated: "2024-01-13",
     submittedBy: "user_drv6",
     submittedByName: "MidSouth_Mitch",
@@ -313,6 +371,12 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     restroomsAvailable: true,
     easyBacking: true,
     highRating: true,
+    accessPoints: [
+      { type: "entrance", label: "Winchester Rd Truck Gate", description: "Truck-only gate off Winchester Rd, DO NOT use passenger entrance on Lamar" },
+      { type: "office", label: "Touch-Screen Check-In", description: "Arrival board kiosk at truck entrance, no paper needed" },
+      { type: "dock", label: "Drive-In Docks T1–T200", description: "Drive-in style docks, fast turnaround — average 45 min unload" },
+      { type: "parking", label: "Driver Services Lot", description: "Lounge and showers available, parking while using amenities only" },
+    ],
   },
   {
     id: "loc_007",
@@ -323,7 +387,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     zipCode: "98134",
     latitude: 47.5608,
     longitude: -122.3237,
-    category: "Retail",
+    category: "Bulk/Tanker",
+    categoryColor: "#22C55E",
     bestEntrance: "South dock entrance, DO NOT use member entrance on 4th Ave",
     parkingAvailable: true,
     overnightParking: false,
@@ -340,6 +405,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     ratingCount: 178,
     trustScore: 87,
     verificationScore: 92,
+    upvotes: 44,
+    reportCount: 4,
     lastUpdated: "2024-01-10",
     submittedBy: "user_drv7",
     submittedByName: "PNW_Trucker_Dan",
@@ -350,6 +417,11 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     restroomsAvailable: true,
     easyBacking: false,
     highRating: true,
+    accessPoints: [
+      { type: "entrance", label: "South Dock Entrance", description: "South side of building ONLY — member entrance on 4th Ave will not let trucks through" },
+      { type: "office", label: "Receiving Office", description: "Enter through dock 1 door, receiving staff will direct you" },
+      { type: "dock", label: "Docks 1–12", description: "Pallet jacks provided at each dock, wait for staff direction" },
+    ],
   },
   {
     id: "loc_008",
@@ -361,6 +433,7 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     latitude: 38.1663,
     longitude: -85.7285,
     category: "Freight / Courier",
+    categoryColor: "#8B5CF6",
     bestEntrance: "East Gate, 24 hour access with seal intact shipments",
     parkingAvailable: true,
     overnightParking: true,
@@ -377,6 +450,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     ratingCount: 843,
     trustScore: 98,
     verificationScore: 99,
+    upvotes: 412,
+    reportCount: 0,
     lastUpdated: "2024-01-15",
     submittedBy: "user_drv8",
     submittedByName: "Bluegrass_Hauler",
@@ -388,6 +463,14 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
     restroomsAvailable: true,
     easyBacking: true,
     highRating: true,
+    accessPoints: [
+      { type: "entrance", label: "East Gate (24hr Access)", description: "East Gate open 24/7, present seal number to security guard" },
+      { type: "scale", label: "Mandatory Inbound Scale", description: "Scale just past east gate, all inbound loads must weigh" },
+      { type: "office", label: "Driver Services Building", description: "Open 24hr — showers, restaurant, gym, lounge with WiFi" },
+      { type: "dock", label: "Docks E1–E150", description: "East dock complex, dock assignment at check-in kiosk inside east gate" },
+      { type: "parking", label: "East Lot Overnight", description: "Secured overnight lot, guard patrols, no hookups" },
+      { type: "fuel", label: "On-Site DEF & Diesel", description: "Fuel station on premises, open 24hr, accepts all major fleet cards" },
+    ],
   },
 ];
 
@@ -396,9 +479,11 @@ interface LocationsContextType {
   isLoading: boolean;
   filters: FilterState;
   setFilters: (filters: FilterState) => void;
-  addLocation: (location: Omit<DeliveryLocation, "id" | "rating" | "ratingCount" | "trustScore" | "verificationScore" | "lastUpdated" | "comments" | "highRating" | "categoryColor"> & { categoryColor?: string }) => void;
+  addLocation: (location: Omit<DeliveryLocation, "id" | "rating" | "ratingCount" | "trustScore" | "verificationScore" | "upvotes" | "reportCount" | "lastUpdated" | "comments" | "highRating" | "categoryColor"> & { categoryColor?: string }) => void;
   addComment: (locationId: string, comment: Omit<LocationComment, "id" | "date">) => void;
   rateLocation: (locationId: string, rating: number) => void;
+  upvoteLocation: (locationId: string) => void;
+  reportLocation: (locationId: string) => void;
   getLocation: (id: string) => DeliveryLocation | undefined;
   filteredLocations: (query: string) => DeliveryLocation[];
 }
@@ -411,13 +496,13 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   useEffect(() => {
-    AsyncStorage.getItem("everstop_locations_v2").then((data) => {
+    AsyncStorage.getItem("everstop_locations_v3").then((data) => {
       if (data) {
         const parsed = JSON.parse(data) as DeliveryLocation[];
         setLocations(parsed.length > 0 ? parsed : SEED_LOCATIONS);
       } else {
         setLocations(SEED_LOCATIONS);
-        AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(SEED_LOCATIONS));
+        AsyncStorage.setItem("everstop_locations_v3", JSON.stringify(SEED_LOCATIONS));
       }
       setIsLoading(false);
     });
@@ -425,10 +510,10 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
 
   const saveLocations = useCallback(async (locs: DeliveryLocation[]) => {
     setLocations(locs);
-    await AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(locs));
+    await AsyncStorage.setItem("everstop_locations_v3", JSON.stringify(locs));
   }, []);
 
-  const addLocation = useCallback((loc: Omit<DeliveryLocation, "id" | "rating" | "ratingCount" | "trustScore" | "verificationScore" | "lastUpdated" | "comments" | "highRating" | "categoryColor"> & { categoryColor?: string }) => {
+  const addLocation = useCallback((loc: Omit<DeliveryLocation, "id" | "rating" | "ratingCount" | "trustScore" | "verificationScore" | "upvotes" | "reportCount" | "lastUpdated" | "comments" | "highRating" | "categoryColor"> & { categoryColor?: string }) => {
     const newLoc: DeliveryLocation = {
       ...loc,
       id: "loc_" + Date.now().toString() + Math.random().toString(36).substr(2, 5),
@@ -436,13 +521,15 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
       ratingCount: 0,
       trustScore: 50,
       verificationScore: 50,
+      upvotes: 0,
+      reportCount: 0,
       lastUpdated: new Date().toISOString().split("T")[0],
       comments: [],
       highRating: false,
     };
     setLocations((prev) => {
       const updated = [newLoc, ...prev];
-      AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(updated));
+      AsyncStorage.setItem("everstop_locations_v3", JSON.stringify(updated));
       return updated;
     });
   }, []);
@@ -458,7 +545,7 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
         };
         return { ...loc, comments: [newComment, ...loc.comments] };
       });
-      AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(updated));
+      AsyncStorage.setItem("everstop_locations_v3", JSON.stringify(updated));
       return updated;
     });
   }, []);
@@ -471,7 +558,32 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
         const newRating = (loc.rating * loc.ratingCount + rating) / newCount;
         return { ...loc, rating: Math.round(newRating * 10) / 10, ratingCount: newCount, highRating: newRating >= 4.0 };
       });
-      AsyncStorage.setItem("everstop_locations_v2", JSON.stringify(updated));
+      AsyncStorage.setItem("everstop_locations_v3", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const upvoteLocation = useCallback((locationId: string) => {
+    setLocations((prev) => {
+      const updated = prev.map((loc) => {
+        if (loc.id !== locationId) return loc;
+        const newUpvotes = (loc.upvotes ?? 0) + 1;
+        const newVerificationScore = Math.min(100, loc.verificationScore + 1);
+        const newTrustScore = Math.min(100, loc.trustScore + 1);
+        return { ...loc, upvotes: newUpvotes, verificationScore: newVerificationScore, trustScore: newTrustScore };
+      });
+      AsyncStorage.setItem("everstop_locations_v3", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const reportLocation = useCallback((locationId: string) => {
+    setLocations((prev) => {
+      const updated = prev.map((loc) => {
+        if (loc.id !== locationId) return loc;
+        return { ...loc, reportCount: (loc.reportCount ?? 0) + 1 };
+      });
+      AsyncStorage.setItem("everstop_locations_v3", JSON.stringify(updated));
       return updated;
     });
   }, []);
@@ -498,7 +610,7 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
   }, [locations, filters]);
 
   return (
-    <LocationsContext.Provider value={{ locations, isLoading, filters, setFilters, addLocation, addComment, rateLocation, getLocation, filteredLocations }}>
+    <LocationsContext.Provider value={{ locations, isLoading, filters, setFilters, addLocation, addComment, rateLocation, upvoteLocation, reportLocation, getLocation, filteredLocations }}>
       {children}
     </LocationsContext.Provider>
   );

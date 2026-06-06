@@ -22,6 +22,7 @@ export interface LocationComment {
   text: string;
   date: string;
   rating: number;
+  photos?: string[];
 }
 
 export interface AccessPoint {
@@ -484,6 +485,7 @@ interface LocationsContextType {
   rateLocation: (locationId: string, rating: number) => void;
   upvoteLocation: (locationId: string) => void;
   reportLocation: (locationId: string) => void;
+  addPhotosToLocation: (locationId: string, photos: string[]) => void;
   getLocation: (id: string) => DeliveryLocation | undefined;
   filteredLocations: (query: string) => DeliveryLocation[];
 }
@@ -588,6 +590,17 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const addPhotosToLocation = useCallback((locationId: string, newPhotos: string[]) => {
+    setLocations((prev) => {
+      const updated = prev.map((loc) => {
+        if (loc.id !== locationId) return loc;
+        return { ...loc, photos: [...(loc.photos ?? []), ...newPhotos] };
+      });
+      AsyncStorage.setItem("everstop_locations_v3", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   const getLocation = useCallback((id: string) => locations.find((l) => l.id === id), [locations]);
 
   const filteredLocations = useCallback((query: string) => {
@@ -610,7 +623,7 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
   }, [locations, filters]);
 
   return (
-    <LocationsContext.Provider value={{ locations, isLoading, filters, setFilters, addLocation, addComment, rateLocation, upvoteLocation, reportLocation, getLocation, filteredLocations }}>
+    <LocationsContext.Provider value={{ locations, isLoading, filters, setFilters, addLocation, addComment, rateLocation, upvoteLocation, reportLocation, addPhotosToLocation, getLocation, filteredLocations }}>
       {children}
     </LocationsContext.Provider>
   );

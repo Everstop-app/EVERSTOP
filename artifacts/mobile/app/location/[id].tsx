@@ -1,11 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Dimensions,
   Image,
   Linking,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,6 +21,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useLocations, AccessPointType } from "@/contexts/LocationsContext";
 import { useAuth } from "@/contexts/AuthContext";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const PHOTO_GRID_SIZE = (SCREEN_WIDTH - 32 - 28) / 3;
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Dry Van":           "#D22F30",
@@ -42,14 +48,18 @@ export default function LocationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getLocation, upvoteLocation, reportLocation, addComment } = useLocations();
-  const { user, toggleFavorite } = useAuth();
+  const { getLocation, upvoteLocation, reportLocation, addComment, addPhotosToLocation } = useLocations();
+  const { user, toggleFavorite, addPoints } = useAuth();
 
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [hasReported, setHasReported] = useState(false);
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [commentRating, setCommentRating] = useState(5);
+  const [commentPhotos, setCommentPhotos] = useState<string[]>([]);
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [allPhotos, setAllPhotosSource] = useState<{ uri: string; label: string }[]>([]);
 
   const location = getLocation(id ?? "");
   const isFav = user?.favoriteLocations.includes(id ?? "") ?? false;
@@ -64,9 +74,6 @@ export default function LocationDetail() {
       </View>
     );
   }
-
-  const isTrusted = location.verificationScore >= 90 && (location.upvotes ?? 0) >= 40;
-  const catColor = location.categoryColor ?? CATEGORY_COLORS[location.category] ?? colors.primary;
 
   const onFav = () => {
     if (!user) { router.push("/auth"); return; }
@@ -123,6 +130,43 @@ export default function LocationDetail() {
     );
   };
 
+  const isTrusted = location.verificationScore >= 90 && (location.upvotes ?? 0) >= 40;
+  const catColor = location.categoryColor ?? CATEGORY_COLORS[location.category] ?? colors.primary;
+
+  const communityPhotos: { uri: string; label: string }[] = [
+    ...(location.photos ?? []).map((uri) => ({ uri, label: "Location" })),
+    ...location.comments.flatMap((c) =>
+      (c.photos ?? []).map((uri) => ({ uri, label: c.userName }))
+    ),
+  ];
+
+  const onAddPhotosToLocation = async () => {
+    if (!user) { router.push("/auth"); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      addPhotosToLocation(location.id, result.assets.map((a) => a.uri));
+      addPoints(10);
+    }
+  };
+
+  const onTakePhotoForLocation = async () => {
+    if (!user) { router.push("/auth"); return; }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      addPhotosToLocation(location.id, [result.assets[0].uri]);
+      addPoints(10);
+    }
+  };
+
   const onSubmitComment = () => {
     if (!user) { router.push("/auth"); return; }
     if (!commentText.trim()) return;
@@ -132,9 +176,16 @@ export default function LocationDetail() {
       userName: user.name,
       text: commentText.trim(),
       rating: commentRating,
+      photos: commentPhotos.length > 0 ? commentPhotos : undefined,
     });
     setCommentText("");
+    setCommentPhotos([]);
     setShowCommentBox(false);
+  };
+
+  const openLightbox = (uri: string, index: number) => {
+    setLightboxUri(uri);
+    setLightboxIndex(index);
   };
 
   const InfoRow = ({ icon, label, value, color, material }: { icon: string; label: string; value: string; color?: string; material?: boolean }) => (
@@ -437,17 +488,61 @@ export default function LocationDetail() {
             {location.contactPhone && <InfoRow icon="call" label="Contact" value={location.contactPhone} />}
           </View>
 
-          {/* Photos */}
-          {location.photos && location.photos.length > 0 && (
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Location Photos</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoGallery}>
-                {location.photos.map((uri, i) => (
-                  <Image key={i} source={{ uri }} style={styles.photoThumb} />
-                ))}
-              </ScrollView>
+          {/* Community Photos */}
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.photosHeader}>
+              <View>
+                <Text style={[styles.cardTitle, { color: colors.foreground }]}>Community Photos</Text>
+                <Text style={[styles.cardSubtitle, { color: colors.mutedForeground }]}>
+                  {communityPhotos.length > 0
+                    ? `${communityPhotos.length} photo${communityPhotos.length !== 1 ? "s" : ""} from drivers & customers`
+                    : "No photos yet — be the first to add one"}
+                </Text>
+              </View>
             </View>
-          )}
+
+            {communityPhotos.length > 0 && (
+              <View style={styles.photoGrid}>
+                {communityPhotos.map((p, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    onPress={() => openLightbox(p.uri, i)}
+                    activeOpacity={0.85}
+                    style={[styles.photoGridItem, { width: PHOTO_GRID_SIZE, height: PHOTO_GRID_SIZE }]}
+                  >
+                    <Image source={{ uri: p.uri }} style={styles.photoGridImg} />
+                    <View style={styles.photoGridLabel}>
+                      <Text style={styles.photoGridLabelText} numberOfLines={1}>{p.label}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.photoUploadRow}>
+              <TouchableOpacity
+                style={[styles.photoUploadBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                onPress={onAddPhotosToLocation}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="images" size={16} color={catColor} />
+                <Text style={[styles.photoUploadText, { color: catColor }]}>Choose Photos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.photoUploadBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                onPress={onTakePhotoForLocation}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="camera" size={16} color={catColor} />
+                <Text style={[styles.photoUploadText, { color: catColor }]}>Take Photo</Text>
+              </TouchableOpacity>
+            </View>
+            {user && (
+              <Text style={[styles.photoEarnNote, { color: colors.mutedForeground }]}>
+                +10 points for each photo you upload
+              </Text>
+            )}
+          </View>
 
           {/* Driver Reviews */}
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -482,10 +577,52 @@ export default function LocationDetail() {
                   multiline
                   style={[styles.commentInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
                 />
+                {/* Comment photos */}
+                {commentPhotos.length > 0 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.commentPhotoRow}>
+                    {commentPhotos.map((uri, i) => (
+                      <View key={i} style={styles.commentPhotoThumb}>
+                        <Image source={{ uri }} style={styles.commentPhotoImg} />
+                        <TouchableOpacity
+                          style={styles.commentPhotoRemove}
+                          onPress={() => setCommentPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                        >
+                          <Ionicons name="close" size={11} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+                <View style={styles.commentPhotoActions}>
+                  <TouchableOpacity
+                    style={[styles.commentAddPhotoBtn, { borderColor: colors.border }]}
+                    onPress={async () => {
+                      const result = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                        allowsMultipleSelection: true,
+                        quality: 0.8,
+                      });
+                      if (!result.canceled) setCommentPhotos((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+                    }}
+                  >
+                    <Ionicons name="images-outline" size={15} color={colors.mutedForeground} />
+                    <Text style={[styles.commentAddPhotoText, { color: colors.mutedForeground }]}>Add Photos</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.commentAddPhotoBtn, { borderColor: colors.border }]}
+                    onPress={async () => {
+                      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+                      if (!result.canceled) setCommentPhotos((prev) => [...prev, result.assets[0].uri]);
+                    }}
+                  >
+                    <Ionicons name="camera-outline" size={15} color={colors.mutedForeground} />
+                    <Text style={[styles.commentAddPhotoText, { color: colors.mutedForeground }]}>Camera</Text>
+                  </TouchableOpacity>
+                </View>
                 <View style={styles.commentActions}>
                   <TouchableOpacity
                     style={[styles.commentCancelBtn, { borderColor: colors.border }]}
-                    onPress={() => { setShowCommentBox(false); setCommentText(""); }}
+                    onPress={() => { setShowCommentBox(false); setCommentText(""); setCommentPhotos([]); }}
                   >
                     <Text style={[styles.commentCancelText, { color: colors.foreground }]}>Cancel</Text>
                   </TouchableOpacity>
@@ -525,12 +662,82 @@ export default function LocationDetail() {
                     </View>
                   </View>
                   <Text style={[styles.commentText, { color: colors.foreground }]}>{c.text}</Text>
+                  {c.photos && c.photos.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.commentPhotoRow}>
+                      {c.photos.map((uri, pi) => (
+                        <TouchableOpacity
+                          key={pi}
+                          onPress={() => openLightbox(uri, communityPhotos.findIndex((p) => p.uri === uri))}
+                          activeOpacity={0.85}
+                        >
+                          <Image source={{ uri }} style={styles.commentReviewPhoto} />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
                 </View>
               ))
             )}
           </View>
         </View>
       </ScrollView>
+
+      {/* Lightbox */}
+      <Modal
+        visible={lightboxUri !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLightboxUri(null)}
+      >
+        <View style={styles.lightboxOverlay}>
+          <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxUri(null)}>
+            <Ionicons name="close" size={26} color="#fff" />
+          </TouchableOpacity>
+          {lightboxUri && (
+            <Image
+              source={{ uri: lightboxUri }}
+              style={styles.lightboxImage}
+              resizeMode="contain"
+            />
+          )}
+          {communityPhotos.length > 1 && (
+            <View style={styles.lightboxNav}>
+              <TouchableOpacity
+                style={[styles.lightboxNavBtn, { opacity: lightboxIndex > 0 ? 1 : 0.3 }]}
+                onPress={() => {
+                  if (lightboxIndex > 0) {
+                    const newIndex = lightboxIndex - 1;
+                    setLightboxIndex(newIndex);
+                    setLightboxUri(communityPhotos[newIndex].uri);
+                  }
+                }}
+              >
+                <Ionicons name="chevron-back" size={28} color="#fff" />
+              </TouchableOpacity>
+              <Text style={styles.lightboxCounter}>
+                {lightboxIndex + 1} / {communityPhotos.length}
+              </Text>
+              <TouchableOpacity
+                style={[styles.lightboxNavBtn, { opacity: lightboxIndex < communityPhotos.length - 1 ? 1 : 0.3 }]}
+                onPress={() => {
+                  if (lightboxIndex < communityPhotos.length - 1) {
+                    const newIndex = lightboxIndex + 1;
+                    setLightboxIndex(newIndex);
+                    setLightboxUri(communityPhotos[newIndex].uri);
+                  }
+                }}
+              >
+                <Ionicons name="chevron-forward" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
+          {communityPhotos[lightboxIndex] && (
+            <Text style={styles.lightboxLabel}>
+              Uploaded by {communityPhotos[lightboxIndex].label}
+            </Text>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -825,4 +1032,147 @@ const styles = StyleSheet.create({
   commentDate: { fontSize: 11, fontFamily: "Inter_400Regular" },
   commentStars: { flexDirection: "row", gap: 2 },
   commentText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  commentPhotoRow: { gap: 8, paddingVertical: 4 },
+  commentPhotoThumb: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    overflow: "hidden",
+    position: "relative",
+  },
+  commentPhotoImg: { width: 64, height: 64 },
+  commentPhotoRemove: {
+    position: "absolute",
+    top: 3,
+    right: 3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  commentPhotoActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  commentAddPhotoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  commentAddPhotoText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  commentReviewPhoto: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+  },
+  photosHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  photoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7,
+  },
+  photoGridItem: {
+    borderRadius: 10,
+    overflow: "hidden",
+    position: "relative",
+  },
+  photoGridImg: {
+    width: "100%" as any,
+    height: "100%" as any,
+  },
+  photoGridLabel: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  photoGridLabelText: {
+    color: "#fff",
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+  },
+  photoUploadRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  photoUploadBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  photoUploadText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  photoEarnNote: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    fontStyle: "italic",
+    marginTop: -4,
+  },
+  lightboxOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lightboxClose: {
+    position: "absolute",
+    top: 56,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  lightboxImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 1.2,
+  },
+  lightboxNav: {
+    position: "absolute",
+    bottom: 100,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 24,
+  },
+  lightboxNavBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lightboxCounter: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  lightboxLabel: {
+    position: "absolute",
+    bottom: 60,
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
 });

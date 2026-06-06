@@ -169,7 +169,7 @@ export default function AuthScreen() {
 
         <View style={styles.logoWrap}>
           <Image
-            source={require("@/assets/images/logo_usa_blue.png")}
+            source={require("@/assets/images/logo_transparent.png")}
             style={styles.logoImg}
             contentFit="contain"
           />

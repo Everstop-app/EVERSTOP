@@ -30,7 +30,7 @@ export default function AppSplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#D22F30",
+    backgroundColor: "#2080DF",
   },
   splashImage: {
     width,

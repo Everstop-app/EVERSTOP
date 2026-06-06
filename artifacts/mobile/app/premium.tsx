@@ -25,6 +25,7 @@ const PLANS = [
       "Advanced search filters",
       "Offline maps",
       "Route planning",
+      "Predictive AI routing — anticipates congestion and suggests alternatives before delays occur",
       "Full location details",
       "Ad-free experience",
       "Priority support",

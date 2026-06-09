@@ -143,9 +143,9 @@ function AddressCard({ addr, hasStops }: { addr: SearchedAddress; hasStops: bool
       </View>
 
       {!hasStops && (
-        <View style={[addrStyles.noDataBanner, { backgroundColor: "#1A3A5C33", borderColor: "#4A9EE044" }]}>
-          <Ionicons name="information-circle-outline" size={15} color="#4A9EE0" />
-          <Text style={addrStyles.noDataText}>
+        <View style={[addrStyles.noDataBanner, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44" }]}>
+          <Ionicons name="information-circle-outline" size={15} color={colors.primary} />
+          <Text style={[addrStyles.noDataText, { color: colors.primary }]}>
             Be the first to add delivery info for this location — help other drivers!
           </Text>
         </View>
@@ -218,7 +218,7 @@ const addrStyles = StyleSheet.create({
     flexDirection: "row", alignItems: "flex-start", gap: 7,
     borderRadius: 10, borderWidth: 1, padding: 10,
   },
-  noDataText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: "#4A9EE0", lineHeight: 17 },
+  noDataText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
   navRow: {
     borderRadius: 12, borderWidth: 1, padding: 10,
   },
@@ -279,9 +279,9 @@ function StopSheet({
             <Ionicons name={catStyle.icon as any} size={38} color={catStyle.color} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={sheet.bannerCat}>{stop.category}</Text>
+            <Text style={[sheet.bannerCat, { color: colors.mutedForeground }]}>{stop.category}</Text>
             <Text style={sheet.bannerName} numberOfLines={2}>{stop.companyName}</Text>
-            <Text style={sheet.bannerAddr} numberOfLines={1}>
+            <Text style={[sheet.bannerAddr, { color: colors.mutedForeground }]} numberOfLines={1}>
               {stop.address}, {stop.city}, {stop.state}
             </Text>
           </View>
@@ -363,9 +363,9 @@ const sheet = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 10, marginBottom: 4 },
   banner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, paddingTop: 12 },
   bannerIcon: { width: 60, height: 60, borderRadius: 14, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  bannerCat: { fontSize: 10, fontFamily: "Inter_500Medium", color: "#7A8CA0", textTransform: "uppercase", letterSpacing: 0.5 },
+  bannerCat: { fontSize: 10, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.5 },
   bannerName: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff", marginTop: 2, lineHeight: 21 },
-  bannerAddr: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#7A8CA0", marginTop: 2 },
+  bannerAddr: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   closeBtn: { position: "absolute", top: 10, right: 14, padding: 4 },
   metaRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",

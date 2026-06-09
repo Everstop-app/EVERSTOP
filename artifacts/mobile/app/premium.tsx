@@ -27,7 +27,7 @@ const PLANS = [
       "Route planning",
       "Predictive AI routing — anticipates congestion and suggests alternatives before delays occur",
       "Live traffic and weather alerts to adjust travel plans",
-      "Points of interest (POI) — truck stops, weigh stations, CAT scales, truck diesel stations, truck parking",
+      "Points of interest (POI) — truck stops, weigh stations, CAT scales, truck diesel stations, truck parking, truck washes, trailer washouts",
       "Full location details",
       "Ad-free experience",
       "Priority support",

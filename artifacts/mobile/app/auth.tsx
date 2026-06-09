@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
@@ -241,10 +241,13 @@ export default function AuthScreen() {
                     ]}
                   >
                     {type === "driver" ? (
-                      <MaterialCommunityIcons
-                        name="truck-trailer"
-                        size={22}
-                        color={accountType === type ? colors.primary : colors.mutedForeground}
+                      <Image
+                        source={require("@/assets/images/logo_transparent.png")}
+                        style={[
+                          styles.typeLogoImg,
+                          { tintColor: accountType === "driver" ? colors.foreground : colors.mutedForeground },
+                        ]}
+                        contentFit="contain"
                       />
                     ) : (
                       <Ionicons
@@ -363,6 +366,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
+  typeLogoImg: { width: 90, height: 34 },
   typeText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   typeSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
   errorBox: {

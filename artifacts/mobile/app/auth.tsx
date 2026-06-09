@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
@@ -240,11 +240,19 @@ export default function AuthScreen() {
                       },
                     ]}
                   >
-                    <Ionicons
-                      name={(type === "driver" ? "truck" : "business") as any}
-                      size={20}
-                      color={accountType === type ? colors.primary : colors.mutedForeground}
-                    />
+                    {type === "driver" ? (
+                      <MaterialCommunityIcons
+                        name="truck-trailer"
+                        size={22}
+                        color={accountType === type ? colors.primary : colors.mutedForeground}
+                      />
+                    ) : (
+                      <Ionicons
+                        name="business"
+                        size={20}
+                        color={accountType === type ? colors.primary : colors.mutedForeground}
+                      />
+                    )}
                     <Text style={[styles.typeText, { color: accountType === type ? colors.primary : colors.foreground }]}>
                       {type === "driver" ? "Driver" : "Customer"}
                     </Text>

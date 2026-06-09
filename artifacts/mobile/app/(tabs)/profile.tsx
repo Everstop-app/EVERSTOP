@@ -43,6 +43,22 @@ const RANK_COLORS: Record<UserRank, string> = {
   "Master Navigator": "#F59E0B",
 };
 
+const BUSINESS_RANK_LABELS: Record<UserRank, string> = {
+  "Rookie Driver": "New Listing",
+  "Road Warrior": "Local Business",
+  "Professional Driver": "Verified Vendor",
+  "Elite Contributor": "Trusted Partner",
+  "Master Navigator": "Community Hub",
+};
+
+const BUSINESS_RANK_ICONS: Record<UserRank, string> = {
+  "Rookie Driver": "storefront-outline",
+  "Road Warrior": "storefront",
+  "Professional Driver": "ribbon-outline",
+  "Elite Contributor": "ribbon",
+  "Master Navigator": "trophy",
+};
+
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -88,8 +104,10 @@ export default function ProfileScreen() {
   const allResults = filteredLocations("");
   const favorites = allResults.filter((l) => user.favoriteLocations.includes(l.id));
 
+  const isCustomer = user.accountType === "customer";
   const rankColor = RANK_COLORS[user.rank];
-  const rankIcon = RANK_ICONS[user.rank];
+  const rankIcon = isCustomer ? BUSINESS_RANK_ICONS[user.rank] : RANK_ICONS[user.rank];
+  const rankLabel = isCustomer ? BUSINESS_RANK_LABELS[user.rank] : user.rank;
 
   return (
     <ScrollView
@@ -133,7 +151,7 @@ export default function ProfileScreen() {
             <Text style={[styles.name, { color: colors.foreground }]}>{user.name}</Text>
             <View style={styles.rankRow}>
               <Ionicons name={rankIcon as any} size={14} color={rankColor} />
-              <Text style={[styles.rank, { color: rankColor }]}>{user.rank}</Text>
+              <Text style={[styles.rank, { color: rankColor }]}>{rankLabel}</Text>
             </View>
             <Text style={[styles.accountType, { color: colors.mutedForeground }]}>
               {user.accountType === "driver" ? "Driver Account" : "Customer Account"}
@@ -187,9 +205,9 @@ export default function ProfileScreen() {
         {/* Stats row */}
         <View style={styles.statsRow}>
           {[
-            { icon: "location", label: "Submitted", value: user.locationsSubmitted },
+            { icon: "location", label: isCustomer ? "Listed" : "Submitted", value: user.locationsSubmitted },
             { icon: "camera", label: "Photos", value: user.photosUploaded },
-            { icon: "checkmark-circle", label: "Verified", value: user.verificationsCompleted },
+            { icon: isCustomer ? "star" : "checkmark-circle", label: isCustomer ? "Reviews" : "Verified", value: user.verificationsCompleted },
             { icon: "bookmark", label: "Saved", value: user.favoriteLocations.length },
           ].map((stat) => (
             <View key={stat.label} style={[styles.stat, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -201,14 +219,50 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {/* Customer: Add Your Business */}
+      {isCustomer && (
+        <View style={[styles.section, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Your Business</Text>
+          <Text style={[styles.businessSub, { color: colors.mutedForeground }]}>
+            Help truck drivers find your location, dock access, parking, and check-in info. Earn points for every submission.
+          </Text>
+          <TouchableOpacity
+            style={[styles.addBusinessBtn, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/add-location");
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="add-circle-outline" size={20} color="#fff" />
+            <Text style={styles.addBusinessBtnText}>Add a Business Location</Text>
+          </TouchableOpacity>
+          {myLocations.length > 0 && (
+            <View style={{ gap: 8, marginTop: 4 }}>
+              <Text style={[styles.rankItemPts, { color: colors.mutedForeground }]}>Your submissions</Text>
+              {myLocations.map((loc) => (
+                <LocationCard key={loc.id} location={loc} compact />
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Ranks */}
       <View style={[styles.section, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Driver Ranks</Text>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{isCustomer ? "Business Ranks" : "Driver Ranks"}</Text>
+        {isCustomer && (
+          <Text style={[styles.businessSub, { color: colors.mutedForeground }]}>
+            Add locations, photos, and reviews to climb the ranks and become a trusted community partner.
+          </Text>
+        )}
         <View style={styles.rankList}>
           {RANKS.map((r, idx) => {
             const isCurrentRank = r === user.rank;
             const isUnlocked = idx <= currentRankIndex;
             const rc = RANK_COLORS[r];
+            const icon = isCustomer ? BUSINESS_RANK_ICONS[r] : RANK_ICONS[r];
+            const label = isCustomer ? BUSINESS_RANK_LABELS[r] : r;
             return (
               <View
                 key={r}
@@ -220,9 +274,9 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                <Ionicons name={RANK_ICONS[r] as any} size={18} color={isUnlocked ? rc : colors.muted} />
+                <Ionicons name={icon as any} size={18} color={isUnlocked ? rc : colors.muted} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.rankItemName, { color: isUnlocked ? colors.foreground : colors.mutedForeground }]}>{r}</Text>
+                  <Text style={[styles.rankItemName, { color: isUnlocked ? colors.foreground : colors.mutedForeground }]}>{label}</Text>
                   <Text style={[styles.rankItemPts, { color: colors.mutedForeground }]}>{POINTS_FOR_RANK[r].toLocaleString('en-US')} pts</Text>
                 </View>
                 {isCurrentRank && (
@@ -405,6 +459,16 @@ const styles = StyleSheet.create({
   },
   currentBadgeText: { color: "#fff", fontSize: 10, fontFamily: "Inter_600SemiBold" },
   seeAll: { fontSize: 14, fontFamily: "Inter_500Medium", textAlign: "center" },
+  businessSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  addBusinessBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  addBusinessBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
   guestHeader: {
     flex: 1,
     alignItems: "center",

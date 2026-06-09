@@ -139,16 +139,6 @@ export default function ProfileScreen() {
               {user.accountType === "driver" ? "Driver Account" : "Customer Account"}
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => {
-              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              logout();
-            }}
-            style={[styles.logoutBtn, { borderColor: colors.border }]}
-            hitSlop={8}
-          >
-            <Ionicons name="log-out-outline" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
         </View>
 
         {/* Points progress */}
@@ -263,6 +253,32 @@ export default function ProfileScreen() {
           )}
         </View>
       )}
+
+      {/* Account actions */}
+      <View style={[styles.accountActions, { borderTopColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => {
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            logout();
+            router.replace("/auth");
+          }}
+        >
+          <Ionicons name="swap-horizontal-outline" size={20} color={colors.foreground} />
+          <Text style={[styles.accountBtnText, { color: colors.foreground }]}>Change Account</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.accountBtn, styles.logoutRow, { backgroundColor: "#FEE2E2", borderColor: "#FCA5A5" }]}
+          onPress={() => {
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            logout();
+          }}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+          <Text style={[styles.accountBtnText, { color: "#DC2626" }]}>Log Out</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -314,14 +330,24 @@ const styles = StyleSheet.create({
   rankRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   rank: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   accountType: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  logoutBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1,
+  accountActions: {
+    padding: 16,
+    paddingBottom: 32,
+    gap: 10,
+    borderTopWidth: 1,
+  },
+  accountBtn: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  logoutRow: {
     justifyContent: "center",
   },
+  accountBtnText: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold" },
   pointsCard: {
     borderRadius: 14,
     borderWidth: 1,

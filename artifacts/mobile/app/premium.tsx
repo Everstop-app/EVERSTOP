@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -132,8 +133,12 @@ export default function PremiumScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.alreadyWrap}>
-          <View style={[styles.crownWrap, { backgroundColor: "#F59E0B22" }]}>
-            <Ionicons name="business" size={40} color="#F59E0B" />
+          <View style={styles.logoWrap}>
+            <Image
+              source={require("../assets/images/logo_transparent.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={[styles.alreadyTitle, { color: colors.foreground }]}>Business Plan Active</Text>
           <Text style={[styles.alreadySub, { color: colors.mutedForeground }]}>
@@ -169,8 +174,12 @@ export default function PremiumScreen() {
       >
         {/* Hero */}
         <View style={styles.heroSection}>
-          <View style={[styles.crownWrap, { backgroundColor: "#F59E0B18" }]}>
-            <MaterialCommunityIcons name="crown" size={38} color="#F59E0B" />
+          <View style={styles.logoWrap}>
+            <Image
+              source={require("../assets/images/logo_transparent.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={[styles.heroTitle, { color: colors.foreground }]}>Upgrade EverStop</Text>
           <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>
@@ -319,7 +328,8 @@ const styles = StyleSheet.create({
   },
   scroll: { padding: 20, gap: 16 },
   heroSection: { alignItems: "center", gap: 10 },
-  crownWrap: { width: 76, height: 76, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  logoWrap: { width: 90, height: 90, alignItems: "center", justifyContent: "center" },
+  logoImage: { width: 90, height: 90 },
   heroTitle: { fontSize: 26, fontFamily: "Inter_700Bold", textAlign: "center" },
   heroSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   plans: { gap: 14 },

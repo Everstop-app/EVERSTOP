@@ -73,6 +73,8 @@ export interface DeliveryLocation {
   easyBacking: boolean;
   highRating: boolean;
   accessPoints?: AccessPoint[];
+  isClaimed?: boolean;
+  claimedByBusiness?: { businessId: string; businessName: string; verified: boolean };
 }
 
 export interface FilterState {
@@ -145,6 +147,8 @@ const SEED_LOCATIONS: DeliveryLocation[] = [
       { type: "scale", label: "Inbound Scale", description: "Scale located just inside main gate, mandatory for inbound loads" },
       { type: "parking", label: "East Lot Overnight Parking", description: "Large overnight lot east side, no hookups, safe and lit" },
     ],
+    isClaimed: true,
+    claimedByBusiness: { businessId: "biz_walmart", businessName: "Walmart Inc.", verified: true },
   },
   {
     id: "loc_002",
@@ -488,6 +492,7 @@ interface LocationsContextType {
   addPhotosToLocation: (locationId: string, photos: string[]) => void;
   getLocation: (id: string) => DeliveryLocation | undefined;
   filteredLocations: (query: string) => DeliveryLocation[];
+  claimLocation: (locationId: string, businessId: string, businessName: string) => void;
 }
 
 const LocationsContext = createContext<LocationsContextType | null>(null);
@@ -601,6 +606,17 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const claimLocation = useCallback((locationId: string, businessId: string, businessName: string) => {
+    setLocations((prev) => {
+      const updated = prev.map((loc) => {
+        if (loc.id !== locationId) return loc;
+        return { ...loc, isClaimed: true, claimedByBusiness: { businessId, businessName, verified: true } };
+      });
+      AsyncStorage.setItem("everstop_locations_v3", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   const getLocation = useCallback((id: string) => locations.find((l) => l.id === id), [locations]);
 
   const filteredLocations = useCallback((query: string) => {
@@ -623,7 +639,7 @@ export function LocationsProvider({ children }: { children: React.ReactNode }) {
   }, [locations, filters]);
 
   return (
-    <LocationsContext.Provider value={{ locations, isLoading, filters, setFilters, addLocation, addComment, rateLocation, upvoteLocation, reportLocation, addPhotosToLocation, getLocation, filteredLocations }}>
+    <LocationsContext.Provider value={{ locations, isLoading, filters, setFilters, addLocation, addComment, rateLocation, upvoteLocation, reportLocation, addPhotosToLocation, claimLocation, getLocation, filteredLocations }}>
       {children}
     </LocationsContext.Provider>
   );

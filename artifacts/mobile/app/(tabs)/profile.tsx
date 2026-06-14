@@ -194,10 +194,21 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-forward" size={14} color="#F59E0B" />
             </TouchableOpacity>
           )}
-          {user.isPremium && (
+          {user.subscriptionTier === "business" && (
+            <TouchableOpacity
+              style={[styles.premiumBanner, { backgroundColor: "#1A2533", borderColor: "#F59E0B33" }]}
+              onPress={() => router.push("/business-dashboard")}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="ribbon" size={16} color="#F59E0B" />
+              <Text style={[styles.premiumText, { color: "#F59E0B" }]}>Business Plan Active · View Dashboard</Text>
+              <Ionicons name="chevron-forward" size={14} color="#F59E0B" />
+            </TouchableOpacity>
+          )}
+          {user.subscriptionTier === "premium" && (
             <View style={[styles.premiumBanner, { backgroundColor: "#1A2533", borderColor: "#F59E0B33" }]}>
               <MaterialCommunityIcons name="crown" size={16} color="#F59E0B" />
-              <Text style={[styles.premiumText, { color: "#F59E0B" }]}>Premium Member · All features unlocked</Text>
+              <Text style={[styles.premiumText, { color: "#F59E0B" }]}>Driver Premium · All features unlocked</Text>
             </View>
           )}
         </View>

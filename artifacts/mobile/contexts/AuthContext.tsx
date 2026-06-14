@@ -3,6 +3,7 @@ import { useUser, useClerk } from "@clerk/expo";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 export type AccountType = "driver" | "customer";
+export type SubscriptionTier = "free" | "premium" | "business";
 
 export type UserRank =
   | "Rookie Driver"
@@ -16,6 +17,8 @@ export interface User {
   name: string;
   email: string;
   accountType: AccountType;
+  subscriptionTier: SubscriptionTier;
+  isPremium: boolean;
   points: number;
   rank: UserRank;
   joinDate: string;
@@ -23,7 +26,7 @@ export interface User {
   photosUploaded: number;
   verificationsCompleted: number;
   favoriteLocations: string[];
-  isPremium: boolean;
+  claimedLocationIds: string[];
   clerkId?: string;
   imageUrl?: string;
 }
@@ -37,6 +40,8 @@ interface AuthContextType {
   addPoints: (points: number) => void;
   toggleFavorite: (locationId: string) => void;
   upgradeToPremium: () => void;
+  upgradeToTier: (tier: SubscriptionTier) => void;
+  addClaimedLocation: (locationId: string) => void;
   syncFromClerk: (clerkUser: any) => void;
   updateUser: (updates: Partial<User>) => void;
 }
@@ -57,6 +62,35 @@ function getRank(points: number): UserRank {
   return "Rookie Driver";
 }
 
+function makeDefaultUser(
+  base: Partial<User> & Pick<User, "id" | "name" | "email" | "accountType">
+): User {
+  return {
+    subscriptionTier: "free",
+    isPremium: false,
+    points: 0,
+    rank: "Rookie Driver",
+    joinDate: new Date().toISOString(),
+    locationsSubmitted: 0,
+    photosUploaded: 0,
+    verificationsCompleted: 0,
+    favoriteLocations: [],
+    claimedLocationIds: [],
+    ...base,
+  };
+}
+
+function migrateUser(raw: any): User {
+  const tier: SubscriptionTier =
+    raw.subscriptionTier ?? (raw.isPremium ? "premium" : "free");
+  return {
+    ...raw,
+    subscriptionTier: tier,
+    isPremium: tier !== "free",
+    claimedLocationIds: raw.claimedLocationIds ?? [],
+  };
+}
+
 const USER_STORAGE_KEY = "everstop_user";
 const ACCOUNTS_KEY = "everstop_accounts";
 
@@ -68,12 +102,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load local user on mount
   useEffect(() => {
     AsyncStorage.getItem(USER_STORAGE_KEY).then((data) => {
       if (data) {
         try {
-          setUser(JSON.parse(data));
+          setUser(migrateUser(JSON.parse(data)));
         } catch {
           setUser(null);
         }
@@ -82,19 +115,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Sync Clerk user -> local user whenever Clerk state changes
   useEffect(() => {
     if (clerkUser && clerkUser.id) {
       const clerkId = clerkUser.id;
-      const name = clerkUser.fullName || clerkUser.firstName || clerkUser.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "User";
+      const name =
+        clerkUser.fullName ||
+        clerkUser.firstName ||
+        clerkUser.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
+        "User";
       const email = clerkUser.emailAddresses?.[0]?.emailAddress || "";
       const imageUrl = clerkUser.imageUrl || undefined;
 
-      // Check if we already have a local user with this clerkId
       AsyncStorage.getItem(USER_STORAGE_KEY).then((data) => {
-        const existingUser = data ? JSON.parse(data) as User : null;
+        const existingUser = data ? migrateUser(JSON.parse(data)) : null;
         if (existingUser && existingUser.clerkId === clerkId) {
-          // Already synced, just update name/email/imageUrl if changed
           const updated = {
             ...existingUser,
             name: existingUser.name || name,
@@ -105,24 +139,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
           return;
         }
-
-        // Create new user from Clerk
-        const newUser: User = {
+        const newUser = makeDefaultUser({
           id: clerkId,
-          clerkId: clerkId,
-          name: name,
-          email: email,
+          clerkId,
+          name,
+          email,
           accountType: "driver",
-          points: 0,
-          rank: "Rookie Driver",
-          joinDate: new Date().toISOString(),
-          locationsSubmitted: 0,
-          photosUploaded: 0,
-          verificationsCompleted: 0,
-          favoriteLocations: [],
-          isPremium: false,
           imageUrl,
-        };
+        });
         setUser(newUser);
         AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
       });
@@ -134,148 +158,159 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(u));
   }, []);
 
-  const login = useCallback(async (email: string, _password: string): Promise<boolean> => {
-    const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
-    if (!stored) return false;
-    const accounts = JSON.parse(stored) as Record<string, User>;
-    const account = accounts[email.toLowerCase()];
-    if (!account) return false;
-    await saveUser(account);
-    return true;
-  }, [saveUser]);
+  const persistUserUpdate = useCallback((updater: (prev: User) => User) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = updater(prev);
+      AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+      if (prev.email) {
+        AsyncStorage.getItem(ACCOUNTS_KEY).then((data) => {
+          const accounts = data ? JSON.parse(data) : {};
+          accounts[prev.email] = updated;
+          AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+        });
+      }
+      return updated;
+    });
+  }, []);
 
-  const register = useCallback(async (name: string, email: string, _password: string, accountType: AccountType): Promise<boolean> => {
-    const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
-    const accounts = stored ? JSON.parse(stored) as Record<string, User> : {};
-    if (accounts[email.toLowerCase()]) return false;
-    const newUser: User = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      name,
-      email,
-      accountType,
-      points: 0,
-      rank: "Rookie Driver",
-      joinDate: new Date().toISOString(),
-      locationsSubmitted: 0,
-      photosUploaded: 0,
-      verificationsCompleted: 0,
-      favoriteLocations: [],
-      isPremium: false,
-    };
-    accounts[email.toLowerCase()] = newUser;
-    await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-    await saveUser(newUser);
-    return true;
-  }, [saveUser]);
+  const login = useCallback(
+    async (email: string, _password: string): Promise<boolean> => {
+      const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
+      if (!stored) return false;
+      const accounts = JSON.parse(stored) as Record<string, any>;
+      const account = accounts[email.toLowerCase()];
+      if (!account) return false;
+      await saveUser(migrateUser(account));
+      return true;
+    },
+    [saveUser]
+  );
+
+  const register = useCallback(
+    async (
+      name: string,
+      email: string,
+      _password: string,
+      accountType: AccountType
+    ): Promise<boolean> => {
+      const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
+      const accounts = stored ? (JSON.parse(stored) as Record<string, User>) : {};
+      if (accounts[email.toLowerCase()]) return false;
+      const newUser = makeDefaultUser({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        name,
+        email,
+        accountType,
+      });
+      accounts[email.toLowerCase()] = newUser;
+      await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+      await saveUser(newUser);
+      return true;
+    },
+    [saveUser]
+  );
 
   const logout = useCallback(async () => {
-    // Sign out from Clerk
     try {
       await signOut();
-    } catch {
-      // Clerk may already be signed out
-    }
-    // Clear local user
+    } catch {}
     setUser(null);
     await AsyncStorage.removeItem(USER_STORAGE_KEY);
   }, [signOut]);
 
-  const addPoints = useCallback((pts: number) => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const newPoints = prev.points + pts;
-      const updated = { ...prev, points: newPoints, rank: getRank(newPoints) };
-      AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
-      if (prev.email) {
-        AsyncStorage.getItem(ACCOUNTS_KEY).then((data) => {
-          const accounts = data ? JSON.parse(data) : {};
-          accounts[prev.email] = updated;
-          AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-        });
-      }
-      return updated;
-    });
-  }, []);
+  const addPoints = useCallback(
+    (pts: number) => {
+      persistUserUpdate((prev) => {
+        const newPoints = prev.points + pts;
+        return { ...prev, points: newPoints, rank: getRank(newPoints) };
+      });
+    },
+    [persistUserUpdate]
+  );
 
-  const toggleFavorite = useCallback((locationId: string) => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const favs = prev.favoriteLocations.includes(locationId)
-        ? prev.favoriteLocations.filter((id) => id !== locationId)
-        : [...prev.favoriteLocations, locationId];
-      const updated = { ...prev, favoriteLocations: favs };
-      AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
-      if (prev.email) {
-        AsyncStorage.getItem(ACCOUNTS_KEY).then((data) => {
-          const accounts = data ? JSON.parse(data) : {};
-          accounts[prev.email] = updated;
-          AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-        });
-      }
-      return updated;
-    });
-  }, []);
+  const toggleFavorite = useCallback(
+    (locationId: string) => {
+      persistUserUpdate((prev) => {
+        const favs = prev.favoriteLocations.includes(locationId)
+          ? prev.favoriteLocations.filter((id) => id !== locationId)
+          : [...prev.favoriteLocations, locationId];
+        return { ...prev, favoriteLocations: favs };
+      });
+    },
+    [persistUserUpdate]
+  );
 
-  const upgradeToPremium = useCallback(() => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, isPremium: true };
-      AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
-      if (prev.email) {
-        AsyncStorage.getItem(ACCOUNTS_KEY).then((data) => {
-          const accounts = data ? JSON.parse(data) : {};
-          accounts[prev.email] = updated;
-          AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-        });
-      }
-      return updated;
-    });
-  }, []);
+  const upgradeToTier = useCallback(
+    (tier: SubscriptionTier) => {
+      persistUserUpdate((prev) => ({
+        ...prev,
+        subscriptionTier: tier,
+        isPremium: tier !== "free",
+      }));
+    },
+    [persistUserUpdate]
+  );
 
-  const updateUser = useCallback((updates: Partial<User>) => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, ...updates };
-      AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
-      if (prev.email) {
-        AsyncStorage.getItem(ACCOUNTS_KEY).then((data) => {
-          const accounts = data ? JSON.parse(data) : {};
-          accounts[prev.email] = updated;
-          AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-        });
-      }
-      return updated;
-    });
-  }, []);
+  const upgradeToPremium = useCallback(() => upgradeToTier("premium"), [upgradeToTier]);
+
+  const addClaimedLocation = useCallback(
+    (locationId: string) => {
+      persistUserUpdate((prev) => ({
+        ...prev,
+        claimedLocationIds: prev.claimedLocationIds.includes(locationId)
+          ? prev.claimedLocationIds
+          : [...prev.claimedLocationIds, locationId],
+      }));
+    },
+    [persistUserUpdate]
+  );
+
+  const updateUser = useCallback(
+    (updates: Partial<User>) => {
+      persistUserUpdate((prev) => ({ ...prev, ...updates }));
+    },
+    [persistUserUpdate]
+  );
 
   const syncFromClerk = useCallback((clerkUser: any) => {
     const clerkId = clerkUser?.id;
-    const name = clerkUser?.fullName || clerkUser?.firstName || clerkUser?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "User";
+    const name =
+      clerkUser?.fullName ||
+      clerkUser?.firstName ||
+      clerkUser?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
+      "User";
     const email = clerkUser?.emailAddresses?.[0]?.emailAddress || "";
     const imageUrl = clerkUser?.imageUrl || undefined;
-
-    const newUser: User = {
+    const newUser = makeDefaultUser({
       id: clerkId || email || Date.now().toString(),
       clerkId: clerkId || undefined,
       name,
       email,
       accountType: "driver",
-      points: 0,
-      rank: "Rookie Driver",
-      joinDate: new Date().toISOString(),
-      locationsSubmitted: 0,
-      photosUploaded: 0,
-      verificationsCompleted: 0,
-      favoriteLocations: [],
-      isPremium: false,
       imageUrl,
-    };
+    });
     setUser(newUser);
     AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, addPoints, toggleFavorite, upgradeToPremium, syncFromClerk, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        logout,
+        addPoints,
+        toggleFavorite,
+        upgradeToPremium,
+        upgradeToTier,
+        addClaimedLocation,
+        syncFromClerk,
+        updateUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

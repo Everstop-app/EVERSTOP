@@ -19,10 +19,44 @@ const DIFFICULTY_CONFIG = {
   difficult: { color: "#EF4444", label: "Difficult" },
 };
 
+type VerificationBadge = "business_verified" | "driver_verified" | "community_trusted" | null;
+
+function getVerificationBadge(location: DeliveryLocation): VerificationBadge {
+  if (location.isClaimed && location.claimedByBusiness?.verified) return "business_verified";
+  if (location.verificationScore >= 95 && location.upvotes >= 60) return "driver_verified";
+  if (location.verificationScore >= 90 && location.upvotes >= 40) return "community_trusted";
+  return null;
+}
+
+const BADGE_CONFIG: Record<
+  Exclude<VerificationBadge, null>,
+  { icon: string; color: string; label: string; bg: string }
+> = {
+  business_verified: {
+    icon: "ribbon",
+    color: "#F59E0B",
+    bg: "#F59E0B18",
+    label: "Business Verified",
+  },
+  driver_verified: {
+    icon: "shield-checkmark",
+    color: "#4A9EE0",
+    bg: "#4A9EE018",
+    label: "Driver Verified",
+  },
+  community_trusted: {
+    icon: "people",
+    color: "#22C55E",
+    bg: "#22C55E18",
+    label: "Community Trusted",
+  },
+};
+
 export function LocationCard({ location, compact = false }: LocationCardProps) {
   const colors = useColors();
   const { user, toggleFavorite } = useAuth();
   const isFav = user?.favoriteLocations.includes(location.id) ?? false;
+  const badge = getVerificationBadge(location);
 
   const onPress = () => {
     if (Platform.OS !== "web") Haptics.selectionAsync();
@@ -45,7 +79,7 @@ export function LocationCard({ location, compact = false }: LocationCardProps) {
         styles.card,
         {
           backgroundColor: colors.card,
-          borderColor: colors.border,
+          borderColor: badge === "business_verified" ? "#F59E0B33" : colors.border,
           opacity: pressed ? 0.92 : 1,
           transform: [{ scale: pressed ? 0.99 : 1 }],
         },
@@ -68,6 +102,16 @@ export function LocationCard({ location, compact = false }: LocationCardProps) {
           />
         </Pressable>
       </View>
+
+      {/* Verification badge */}
+      {badge && (
+        <View style={[styles.verificationBadge, { backgroundColor: BADGE_CONFIG[badge].bg }]}>
+          <Ionicons name={BADGE_CONFIG[badge].icon as any} size={12} color={BADGE_CONFIG[badge].color} />
+          <Text style={[styles.verificationText, { color: BADGE_CONFIG[badge].color }]}>
+            {BADGE_CONFIG[badge].label}
+          </Text>
+        </View>
+      )}
 
       <View style={styles.ratingRow}>
         <RatingStars rating={location.rating} ratingCount={location.ratingCount} size={13} />
@@ -153,6 +197,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   favBtn: { padding: 2 },
+  verificationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  verificationText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",

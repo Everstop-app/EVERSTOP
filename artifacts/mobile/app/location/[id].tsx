@@ -131,6 +131,9 @@ export default function LocationDetail() {
   };
 
   const isTrusted = location.verificationScore >= 90 && (location.upvotes ?? 0) >= 40;
+  const isBusinessVerified = !!(location.isClaimed && location.claimedByBusiness?.verified);
+  const isDriverVerified = !isBusinessVerified && location.verificationScore >= 95 && (location.upvotes ?? 0) >= 60;
+  const canClaim = !location.isClaimed && (user?.subscriptionTier === "business" || user?.accountType === "customer");
   const catColor = location.categoryColor ?? CATEGORY_COLORS[location.category] ?? colors.primary;
 
   const communityPhotos: { uri: string; label: string }[] = [
@@ -230,12 +233,24 @@ export default function LocationDetail() {
             <Ionicons name="business" size={32} color={catColor} />
           </View>
 
-          {/* Category + Trusted badges */}
+          {/* Category + Verification badges */}
           <View style={styles.badgeRow}>
             <View style={[styles.catBadge, { backgroundColor: catColor + "22" }]}>
               <Text style={[styles.catBadgeText, { color: catColor }]}>{location.category}</Text>
             </View>
-            {isTrusted && (
+            {isBusinessVerified && (
+              <View style={[styles.trustedBadge, { backgroundColor: "#F59E0B" }]}>
+                <Ionicons name="ribbon" size={13} color="#fff" />
+                <Text style={styles.trustedBadgeText}>Business Verified</Text>
+              </View>
+            )}
+            {isDriverVerified && (
+              <View style={styles.trustedBadge}>
+                <Ionicons name="shield-checkmark" size={13} color="#fff" />
+                <Text style={styles.trustedBadgeText}>Driver Verified</Text>
+              </View>
+            )}
+            {isTrusted && !isBusinessVerified && !isDriverVerified && (
               <View style={styles.trustedBadge}>
                 <Ionicons name="shield-checkmark" size={13} color="#fff" />
                 <Text style={styles.trustedBadgeText}>Trusted Location</Text>
@@ -247,6 +262,16 @@ export default function LocationDetail() {
           <Text style={[styles.heroAddress, { color: colors.mutedForeground }]}>
             {location.address}, {location.city}, {location.state} {location.zipCode}
           </Text>
+
+          {/* Business claimed info banner */}
+          {isBusinessVerified && location.claimedByBusiness && (
+            <View style={[styles.claimedBanner, { backgroundColor: "#F59E0B10", borderColor: "#F59E0B33" }]}>
+              <Ionicons name="ribbon" size={14} color="#F59E0B" />
+              <Text style={[styles.claimedText, { color: "#F59E0B" }]}>
+                Managed by {location.claimedByBusiness.businessName}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.actionRow}>
             <TouchableOpacity
@@ -265,6 +290,16 @@ export default function LocationDetail() {
               >
                 <Ionicons name="call" size={16} color={colors.foreground} />
                 <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Call</Text>
+              </TouchableOpacity>
+            )}
+            {canClaim && (
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: "#F59E0B18", borderColor: "#F59E0B55", borderWidth: 1 }]}
+                onPress={() => router.push(`/claim-location?id=${location.id}`)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="ribbon" size={16} color="#F59E0B" />
+                <Text style={[styles.actionBtnText, { color: "#F59E0B" }]}>Claim</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -817,6 +852,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   actionBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  claimedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: "stretch" as const,
+    justifyContent: "center" as const,
+  },
+  claimedText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   infoSection: { padding: 16, gap: 12 },
   quickBadges: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   quickBadge: {

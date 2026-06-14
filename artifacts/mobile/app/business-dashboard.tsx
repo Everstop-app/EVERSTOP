@@ -73,7 +73,7 @@ export default function BusinessDashboardScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.upgradeTitle]}>Upgrade to Business Plan</Text>
               <Text style={[styles.upgradeSub]}>
-                Claim locations, update dock info, and earn your Business Verified badge — $29.99/mo
+                Claim locations, update dock info, and earn your Business Verified badge — custom pricing
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#F59E0B" />

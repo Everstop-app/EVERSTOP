@@ -51,8 +51,8 @@ const PLANS: {
   {
     id: "business",
     name: "Business / Fleet",
-    price: "$29.99",
-    billing: "/month",
+    price: "Custom",
+    billing: "pricing",
     tagline: "For warehouses, fleets & businesses managing delivery locations",
     features: [
       { icon: "checkmark-circle", text: "Claim & manage your business location" },
@@ -298,6 +298,8 @@ export default function PremiumScreen() {
           <Text style={styles.ctaBtnText}>
             {alreadyOnSelected
               ? "Current Plan"
+              : selected === "business"
+              ? "Get a Quote — Business / Fleet"
               : `Start ${currentPlan.name} — ${currentPlan.price}/mo`}
           </Text>
         </TouchableOpacity>

@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth, SubscriptionTier } from "@/contexts/AuthContext";
 
-type PlanId = "premium" | "business";
+type PlanId = "premium" | "business" | "jobs";
 
 const PLANS: {
   id: PlanId;
@@ -48,6 +48,27 @@ const PLANS: {
     ],
     color: "#4A9EE0",
     icon: "diamond-outline",
+  },
+  {
+    id: "jobs",
+    name: "Job Advertising",
+    price: "Custom",
+    billing: "pricing",
+    tagline: "Post CDL jobs directly to active drivers on their routes — no job boards, no middlemen",
+    features: [
+      { icon: "megaphone", text: "Post CDL & delivery job listings in the app" },
+      { icon: "location", text: "Target drivers by route, region, or home base" },
+      { icon: "star", text: "Featured placement on map & search results" },
+      { icon: "notifications", text: "Push notifications to nearby active drivers" },
+      { icon: "bar-chart", text: "Impression, click & apply analytics" },
+      { icon: "create", text: "Branded company profile with logo & photos" },
+      { icon: "people", text: "Manage applicants in-app" },
+      { icon: "ribbon", text: "Business Verified badge on all job posts" },
+      { icon: "refresh", text: "Auto-renew & boost listings to stay at top" },
+    ],
+    color: "#8B5CF6",
+    icon: "briefcase",
+    highlight: false,
   },
   {
     id: "business",
@@ -119,7 +140,7 @@ export default function PremiumScreen() {
   const onSubscribe = () => {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     if (!user) { router.push("/auth"); return; }
-    const tierMap: Record<PlanId, SubscriptionTier> = { premium: "premium", business: "business" };
+    const tierMap: Record<PlanId, SubscriptionTier> = { premium: "premium", business: "business", jobs: "business" };
     upgradeToTier(tierMap[selected]);
     router.back();
   };
@@ -309,6 +330,8 @@ export default function PremiumScreen() {
               ? "Current Plan"
               : selected === "business"
               ? "Get a Quote — Business / Fleet"
+              : selected === "jobs"
+              ? "Get a Quote — Job Advertising"
               : `Start ${currentPlan.name} — ${currentPlan.price}/mo`}
           </Text>
         </TouchableOpacity>

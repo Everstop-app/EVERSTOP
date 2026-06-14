@@ -62,7 +62,7 @@ const PLANS: {
       { icon: "bar-chart", text: "Driver feedback analytics dashboard" },
       { icon: "star", text: "Priority listing placement on map" },
       { icon: "ribbon", text: "Business Verified gold badge on your pin" },
-      { icon: "people", text: "Fleet seat management (up to 25 drivers)" },
+      { icon: "people", text: "Fleet seat management (custom driver count)" },
       { icon: "diamond-outline", text: "All Driver Premium features included" },
     ],
     color: "#F59E0B",

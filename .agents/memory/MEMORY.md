@@ -1,0 +1,1 @@
+- [Mapbox tile setup](mapbox-tiles.md) — Mapbox via raster UrlTile (Expo Go compatible); mapbox-gl WebGL fails in Replit iframe.

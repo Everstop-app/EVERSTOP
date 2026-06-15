@@ -10,9 +10,10 @@ import MapView, {
 
 import { useColors } from "@/hooks/useColors";
 
-const OSM_STANDARD = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const OSM_DARK = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
-const ESRI_SATELLITE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
+function mapboxUrl(style: string) {
+  return `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`;
+}
 
 export type Location = {
   id: string;
@@ -132,8 +133,8 @@ export function MapLayer({
   const colors = useColors();
 
   const tileUrl = mapType === "satellite"
-    ? ESRI_SATELLITE
-    : isDark ? OSM_DARK : OSM_STANDARD;
+    ? mapboxUrl("satellite-streets-v12")
+    : isDark ? mapboxUrl("dark-v11") : mapboxUrl("streets-v12");
 
   return (
     <MapView

@@ -3,7 +3,6 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Animated,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,6 +16,13 @@ import type { Map as LeafletMap, LeafletMouseEvent } from "leaflet";
 import { useColors } from "@/hooks/useColors";
 import { useLocations } from "@/contexts/LocationsContext";
 import { SearchBar } from "@/components/SearchBar";
+
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
+
+const MAPBOX_STREETS = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`;
+const MAPBOX_DARK = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`;
+const MAPBOX_SATELLITE = `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`;
+const ATTRIBUTION = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 const RATING_COLORS: Record<string, string> = {
   high: "#22C55E",
@@ -34,12 +40,6 @@ function getPinColor(loc: any): string {
   return RATING_COLORS.low;
 }
 
-const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const SATELLITE_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-const SATELLITE_LABELS_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-
 export default function MapScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -49,11 +49,15 @@ export default function MapScreen() {
   const [droppedPin, setDroppedPin] = useState<{ lat: number; lng: number } | null>(null);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-  const { filters, setFilters, filteredLocations } = useLocations();
+  const { filteredLocations } = useLocations();
   const [query, setQuery] = useState("");
   const mapRef = useRef<LeafletMap | null>(null);
 
   const results = filteredLocations(query);
+
+  const tileUrl = mapView === "satellite"
+    ? MAPBOX_SATELLITE
+    : isDark ? MAPBOX_DARK : MAPBOX_STREETS;
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -85,7 +89,6 @@ export default function MapScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Leaflet map fills the entire screen */}
       <View style={StyleSheet.absoluteFill}>
         <MapContainer
           center={[39.5, -98.35]}
@@ -95,12 +98,10 @@ export default function MapScreen() {
           zoomControl={false}
         >
           <TileLayer
-            url={mapView === "satellite" ? SATELLITE_TILES : (isDark ? DARK_TILES : LIGHT_TILES)}
+            url={tileUrl}
             attribution={ATTRIBUTION}
+            tileSize={256}
           />
-          {mapView === "satellite" && (
-            <TileLayer url={SATELLITE_LABELS_TILES} attribution="" />
-          )}
           {droppedPin && (
             <Marker
               position={[droppedPin.lat, droppedPin.lng]}
@@ -144,7 +145,7 @@ export default function MapScreen() {
                     <button
                       onClick={() => router.push(`/location/${loc.id}`)}
                       style={{
-                        background: "#4A9EE0",
+                        background: "#3D8DC4",
                         color: "#fff",
                         border: "none",
                         borderRadius: 8,
@@ -165,7 +166,6 @@ export default function MapScreen() {
         </MapContainer>
       </View>
 
-      {/* Search & filter overlay */}
       <View
         style={[styles.overlay, { paddingTop: insets.top + WEB_TOP + 8 }]}
         pointerEvents="box-none"
@@ -212,7 +212,6 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* Drop mode banner */}
       {droppingPin && (
         <View style={[styles.dropBanner, { backgroundColor: colors.primary }]} pointerEvents="none">
           <Ionicons name="location" size={15} color="#fff" />
@@ -220,7 +219,6 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Dropped pin card */}
       {droppedPin && (
         <View
           style={[styles.pinCard, { backgroundColor: colors.card, borderColor: colors.border, bottom: insets.bottom + 84 + 34 + 16 }]}
@@ -248,7 +246,6 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Add button */}
       <View
         style={[styles.addBtnWrap, { bottom: insets.bottom + 84 + 34 }]}
         pointerEvents="box-none"
@@ -266,7 +263,6 @@ export default function MapScreen() {
           </View>
         </TouchableOpacity>
       </View>
-
     </View>
   );
 }
@@ -319,42 +315,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  filterBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#EF4444",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterBadgeText: {
-    color: "#fff",
-    fontSize: 9,
-    fontFamily: "Inter_700Bold",
-  },
-  filterBarWrap: {
-    marginHorizontal: -16,
-  },
-  countRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  countBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  countText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
   },
   dropBanner: {
     position: "absolute",
@@ -415,28 +375,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
-  },
-  legend: {
-    position: "absolute",
-    flexDirection: "row",
-    gap: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
   },
 });

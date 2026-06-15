@@ -20,6 +20,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
         <Label>Search</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="jobs">
+        <Icon sf={{ default: "briefcase", selected: "briefcase.fill" }} />
+        <Label>Jobs</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
         <Label>Profile</Label>
@@ -86,6 +90,18 @@ function ClassicTabLayout() {
               <SymbolView name="magnifyingglass" tintColor={color} size={22} />
             ) : (
               <Ionicons name="search" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="jobs"
+        options={{
+          title: "Jobs",
+          tabBarIcon: ({ color, focused }) =>
+            isIOS ? (
+              <SymbolView name={focused ? "briefcase.fill" : "briefcase"} tintColor={color} size={22} />
+            ) : (
+              <Ionicons name={focused ? "briefcase" : "briefcase-outline"} size={22} color={color} />
             ),
         }}
       />

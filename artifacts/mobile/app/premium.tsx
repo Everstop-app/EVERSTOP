@@ -27,6 +27,7 @@ const PLANS: {
   features: { icon: string; mat?: boolean; text: string }[];
   color: string;
   icon: string;
+  iconMat?: boolean;
   highlight?: boolean;
 }[] = [
   {
@@ -47,7 +48,8 @@ const PLANS: {
       { icon: "headset", text: "Priority support" },
     ],
     color: "#4A9EE0",
-    icon: "diamond-outline",
+    icon: "steering",
+    iconMat: true,
   },
   {
     id: "jobs",
@@ -85,7 +87,7 @@ const PLANS: {
       { icon: "star", text: "Priority listing placement on map" },
       { icon: "ribbon", text: "Business Verified gold badge on your pin" },
       { icon: "people", text: "Fleet seat management (custom driver count)" },
-      { icon: "diamond-outline", text: "All Driver Premium features included" },
+      { icon: "steering", mat: true, text: "All Driver Premium features included" },
     ],
     color: "#F59E0B",
     icon: "business",
@@ -233,7 +235,9 @@ export default function PremiumScreen() {
 
                 <View style={styles.planHeader}>
                   <View style={[styles.planIconWrap, { backgroundColor: plan.color + "18" }]}>
-                    <Ionicons name={plan.icon as any} size={22} color={plan.color} />
+                    {plan.iconMat
+                      ? <MaterialCommunityIcons name={plan.icon as any} size={22} color={plan.color} />
+                      : <Ionicons name={plan.icon as any} size={22} color={plan.color} />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.planName, { color: colors.foreground }]}>{plan.name}</Text>

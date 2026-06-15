@@ -1,10 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MapView, {
   Callout,
   Marker,
   PROVIDER_DEFAULT,
+  PROVIDER_GOOGLE,
 } from "react-native-maps";
 
 import { useColors } from "@/hooks/useColors";
@@ -145,7 +146,7 @@ export function MapLayer({
     <MapView
       ref={mapRef}
       style={StyleSheet.absoluteFill}
-      provider={PROVIDER_DEFAULT}
+      provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
       mapType={mapType === "satellite" ? "hybrid" : mapType}
       customMapStyle={isDark && mapType === "standard" ? DARK_MAP_STYLE : []}
       initialRegion={{

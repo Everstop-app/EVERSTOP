@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "EverStop",
-    "slug": "mobile",
+    "slug": "everstop",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "everstop",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -14,9 +14,16 @@
       "backgroundColor": "#2080DF"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.everstop.app"
     },
-    "android": {},
+    "android": {
+      "package": "com.everstop.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#2080DF"
+      }
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -33,6 +40,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
     }
   }
 }

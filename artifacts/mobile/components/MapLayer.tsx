@@ -1,14 +1,18 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MapView, {
   Callout,
   Marker,
   PROVIDER_DEFAULT,
-  PROVIDER_GOOGLE,
+  UrlTile,
 } from "react-native-maps";
 
 import { useColors } from "@/hooks/useColors";
+
+const OSM_STANDARD = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_DARK = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
+const ESRI_SATELLITE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 export type Location = {
   id: string;
@@ -37,21 +41,6 @@ type MapLayerProps = {
   onCalloutPress: (id: string) => void;
 };
 
-const DARK_MAP_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#0f1a2a" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0a1420" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#7a8ca0" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1e3048" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#162236" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#253d5a" }] },
-  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#4a9ee0" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#071220" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#4a9ee0" }] },
-  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#0f1d2e" }] },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#0d1f18" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#1e3048" }] },
-  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#162236" }] },
-];
 
 const CATEGORY_ICONS: Record<string, { icon: string; set: "ionicons" | "material" }> = {
   "Dry Van":          { icon: "cube",           set: "ionicons" },
@@ -142,13 +131,16 @@ export function MapLayer({
 }: MapLayerProps) {
   const colors = useColors();
 
+  const tileUrl = mapType === "satellite"
+    ? ESRI_SATELLITE
+    : isDark ? OSM_DARK : OSM_STANDARD;
+
   return (
     <MapView
       ref={mapRef}
       style={StyleSheet.absoluteFill}
-      provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-      mapType={mapType === "satellite" ? "hybrid" : mapType}
-      customMapStyle={isDark && mapType === "standard" ? DARK_MAP_STYLE : []}
+      provider={PROVIDER_DEFAULT}
+      mapType="none"
       initialRegion={{
         latitude: 39.5,
         longitude: -98.35,
@@ -163,6 +155,12 @@ export function MapLayer({
         if (onMapPress) onMapPress(e.nativeEvent.coordinate.latitude, e.nativeEvent.coordinate.longitude);
       }}
     >
+      <UrlTile
+        urlTemplate={tileUrl}
+        maximumZ={19}
+        tileSize={256}
+        zIndex={-1}
+      />
       {droppedPin && (
         <Marker
           coordinate={{ latitude: droppedPin.lat, longitude: droppedPin.lng }}

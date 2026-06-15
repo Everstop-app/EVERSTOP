@@ -16,20 +16,12 @@ const config = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: "com.everstop.app",
-    config: {
-      googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
-    },
   },
   android: {
     package: "com.everstop.app",
     adaptiveIcon: {
       foregroundImage: "./assets/images/icon.png",
       backgroundColor: "#2080DF",
-    },
-    config: {
-      googleMaps: {
-        apiKey: process.env.GOOGLE_MAPS_API_KEY,
-      },
     },
   },
   web: {

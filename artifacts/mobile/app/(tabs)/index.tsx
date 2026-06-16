@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
+import * as Location from "expo-location";
 import { router } from "expo-router";
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import {
-  Animated,
   Platform,
   StyleSheet,
   Text,
@@ -18,20 +18,14 @@ import { MapLayer } from "@/components/MapLayer";
 import { SearchBar } from "@/components/SearchBar";
 import { useColors } from "@/hooks/useColors";
 import { useLocations } from "@/contexts/LocationsContext";
-
-const RATING_COLORS: Record<string, string> = {
-  high: "#22C55E",
-  medium: "#F59E0B",
-  low: "#EF4444",
-  none: "#7A8CA0",
-};
+import { fetchRoute, type RouteData } from "@/utils/mapboxRouting";
 
 export default function MapScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-  const { filters, setFilters, filteredLocations } = useLocations();
+  const { filteredLocations } = useLocations();
 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -39,11 +33,16 @@ export default function MapScreen() {
   const [showLayerMenu, setShowLayerMenu] = useState(false);
   const [droppingPin, setDroppingPin] = useState(false);
   const [droppedPin, setDroppedPin] = useState<{ lat: number; lng: number } | null>(null);
-  const mapRef = useRef<any>(null);
 
+  const [routeData, setRouteData] = useState<RouteData | null>(null);
+  const [routeDestName, setRouteDestName] = useState<string | null>(null);
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+
+  const mapRef = useRef<any>(null);
   const results = filteredLocations(query);
 
   const WEB_TOP = Platform.OS === "web" ? 67 : 0;
+  const BOTTOM_BASE = insets.bottom + (Platform.OS === "web" ? 84 + 34 : 90);
 
   const handleMarkerPress = (id: string, lat: number, lng: number) => {
     setSelectedId(id);
@@ -58,6 +57,43 @@ export default function MapScreen() {
     router.push(`/location/${id}`);
   };
 
+  const handleDirections = async (id: string, lat: number, lng: number) => {
+    const loc = results.find((l) => l.id === id);
+    setRouteDestName(loc?.companyName ?? null);
+    setIsLoadingRoute(true);
+    setRouteData(null);
+    setDroppedPin(null);
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setIsLoadingRoute(false);
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const route = await fetchRoute(pos.coords.latitude, pos.coords.longitude, lat, lng);
+      setRouteData(route);
+
+      if (route && mapRef.current) {
+        const midIdx = Math.floor(route.coords.length / 2);
+        const [midLng, midLat] = route.coords[midIdx];
+        mapRef.current.animateToRegion(
+          { latitude: midLat, longitude: midLng, latitudeDelta: 0.5, longitudeDelta: 0.5 },
+          800
+        );
+      }
+    } catch {
+      // location or network failure — silently clear loading
+    } finally {
+      setIsLoadingRoute(false);
+    }
+  };
+
+  const clearRoute = () => {
+    setRouteData(null);
+    setRouteDestName(null);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <MapLayer
@@ -67,9 +103,11 @@ export default function MapScreen() {
         isDark={isDark}
         mapType={mapType}
         droppedPin={droppedPin}
+        routeCoords={routeData?.coords ?? null}
         onMapPress={droppingPin ? (lat, lng) => { setDroppedPin({ lat, lng }); setDroppingPin(false); } : undefined}
         onMarkerPress={handleMarkerPress}
         onCalloutPress={navigateToLocation}
+        onDirectionsPress={handleDirections}
       />
 
       {/* Search & Filter overlay */}
@@ -77,7 +115,6 @@ export default function MapScreen() {
         style={[styles.overlay, { paddingTop: insets.top + WEB_TOP + 8 }]}
         pointerEvents="box-none"
       >
-        {/* Logo row */}
         <View pointerEvents="none">
           <Image
             source={require("@/assets/images/logo_transparent.png")}
@@ -128,12 +165,43 @@ export default function MapScreen() {
         </View>
       )}
 
+      {/* Route info card */}
+      {(isLoadingRoute || routeData) && !droppedPin && (
+        <View style={[styles.routeCard, { backgroundColor: colors.card, borderColor: colors.border, bottom: BOTTOM_BASE + 16 }]}>
+          {isLoadingRoute ? (
+            <View style={styles.routeCardRow}>
+              <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
+                <Ionicons name="navigate-circle-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={[styles.routeCardText, { color: colors.mutedForeground }]}>Finding route…</Text>
+            </View>
+          ) : routeData ? (
+            <View style={styles.routeCardRow}>
+              <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
+                <Ionicons name="navigate" size={16} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.routeCardDest, { color: colors.foreground }]} numberOfLines={1}>
+                  {routeDestName}
+                </Text>
+                <Text style={[styles.routeCardMeta, { color: colors.mutedForeground }]}>
+                  {routeData.durationMin} min · {routeData.distanceMi.toFixed(1)} mi · Driving
+                </Text>
+              </View>
+              <TouchableOpacity onPress={clearRoute} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                <Ionicons name="close-circle" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+      )}
+
       {/* Dropped pin card */}
       {droppedPin && (
         <View
           style={[
             styles.pinCard,
-            { backgroundColor: colors.card, borderColor: colors.border, bottom: insets.bottom + (Platform.OS === "web" ? 84 + 34 : 90) + 16 },
+            { backgroundColor: colors.card, borderColor: colors.border, bottom: BOTTOM_BASE + 16 },
           ]}
         >
           <View style={styles.pinCardHeader}>
@@ -160,19 +228,21 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Add button */}
+      {/* Add / drop-pin FAB */}
       <View
-        style={[
-          styles.addBtnWrap,
-          { bottom: insets.bottom + (Platform.OS === "web" ? 84 + 34 : 90) },
-        ]}
+        style={[styles.addBtnWrap, { bottom: BOTTOM_BASE }]}
         pointerEvents="box-none"
       >
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => {
-            if (droppingPin) { setDroppingPin(false); }
-            else { setDroppedPin(null); setDroppingPin(true); }
+            if (droppingPin) {
+              setDroppingPin(false);
+            } else {
+              setDroppedPin(null);
+              clearRoute();
+              setDroppingPin(true);
+            }
           }}
           activeOpacity={0.85}
         >
@@ -181,7 +251,6 @@ export default function MapScreen() {
           </View>
         </TouchableOpacity>
       </View>
-
     </View>
   );
 }
@@ -235,42 +304,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  filterBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#EF4444",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterBadgeText: {
-    color: "#fff",
-    fontSize: 9,
-    fontFamily: "Inter_700Bold",
-  },
-  filterBarWrap: {
-    marginHorizontal: -16,
-  },
-  countRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  countBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  countText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
   dropBanner: {
     position: "absolute",
     left: 16,
@@ -284,6 +317,31 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   dropBannerText: { color: "#fff", fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
+  routeCard: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  routeCardRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  routeIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  routeCardDest: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  routeCardMeta: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  routeCardText: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
   pinCard: {
     position: "absolute",
     left: 16,
@@ -330,28 +388,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
-  },
-  legend: {
-    position: "absolute",
-    flexDirection: "row",
-    gap: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
   },
 });

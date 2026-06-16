@@ -11,13 +11,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import mapboxgl from "mapbox-gl";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline as LeafletPolyline } from "react-leaflet";
 import L from "leaflet";
 import type { Map as LeafletMapInstance, LeafletMouseEvent } from "leaflet";
 import { useColors } from "@/hooks/useColors";
 import { useLocations } from "@/contexts/LocationsContext";
 import { SearchBar } from "@/components/SearchBar";
 import type { Location } from "@/components/MapLayer";
+import { fetchRoute, type RouteData } from "@/utils/mapboxRouting";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -72,8 +73,10 @@ type MapboxMapProps = {
   mapView: MapView;
   droppingPin: boolean;
   droppedPin: { lat: number; lng: number } | null;
+  routeData: RouteData | null;
   onMapClick: (lat: number, lng: number) => void;
   onLocationNav: (id: string) => void;
+  onDirections: (id: string, lat: number, lng: number) => void;
   onFallback: () => void;
 };
 
@@ -83,8 +86,10 @@ function MapboxMap({
   mapView,
   droppingPin,
   droppedPin,
+  routeData,
   onMapClick,
   onLocationNav,
+  onDirections,
   onFallback,
 }: MapboxMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,6 +98,12 @@ function MapboxMap({
   const droppedMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const droppingRef = useRef(droppingPin);
   droppingRef.current = droppingPin;
+  const routeDataRef = useRef<RouteData | null>(null);
+  routeDataRef.current = routeData;
+  const onDirectionsRef = useRef(onDirections);
+  onDirectionsRef.current = onDirections;
+  const onLocationNavRef = useRef(onLocationNav);
+  onLocationNavRef.current = onLocationNav;
 
   const styleUrl = mapView === "satellite" ? STYLE_SATELLITE : isDark ? STYLE_DARK : STYLE_LIGHT;
 
@@ -102,6 +113,16 @@ function MapboxMap({
     link.href = "https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css";
     document.head.appendChild(link);
     return () => { document.head.removeChild(link); };
+  }, []);
+
+  useEffect(() => {
+    (window as any).__everstopNav = (id: string) => onLocationNavRef.current(id);
+    (window as any).__everstopDirections = (id: string, lat: number, lng: number) =>
+      onDirectionsRef.current(id, lat, lng);
+    return () => {
+      delete (window as any).__everstopNav;
+      delete (window as any).__everstopDirections;
+    };
   }, []);
 
   useEffect(() => {
@@ -126,6 +147,44 @@ function MapboxMap({
       onMapClick(e.lngLat.lat, e.lngLat.lng);
     });
     map.on("error", () => { onFallback(); });
+
+    const setupRouteLayer = () => {
+      if (map.getSource("route")) return;
+      map.addSource("route", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "route-casing",
+        type: "line",
+        source: "route",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "#fff", "line-width": 8 },
+      });
+      map.addLayer({
+        id: "route-line",
+        type: "line",
+        source: "route",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "#3D8DC4", "line-width": 5 },
+      });
+    };
+
+    map.on("style.load", () => {
+      setupRouteLayer();
+      const rd = routeDataRef.current;
+      if (rd && rd.coords.length > 0) {
+        const src = map.getSource("route") as mapboxgl.GeoJSONSource;
+        if (src) {
+          src.setData({
+            type: "Feature",
+            properties: {},
+            geometry: { type: "LineString", coordinates: rd.coords },
+          });
+        }
+      }
+    });
+
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
   }, []);
@@ -152,20 +211,24 @@ function MapboxMap({
       locations.forEach((loc) => {
         const color = getPinColor(loc);
         const el = makePinEl(color);
-        const popup = new mapboxgl.Popup({ offset: 20, closeButton: false, maxWidth: "220px" })
+        const popup = new mapboxgl.Popup({ offset: 20, closeButton: false, maxWidth: "230px" })
           .setHTML(`
             <div style="font-family:sans-serif;padding:4px 0">
               <div style="font-weight:700;font-size:14px;margin-bottom:2px">${loc.companyName}</div>
               <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${loc.city}, ${loc.state}</div>
-              <div style="font-size:12px;margin-bottom:8px">⭐ ${loc.ratingCount > 0 ? loc.rating.toFixed(1) : "No ratings"}${loc.ratingCount > 0 ? ` <span style="color:#9ca3af">(${loc.ratingCount})</span>` : ""}</div>
-              <button data-loc-id="${loc.id}" style="background:#3D8DC4;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;width:100%">View Details</button>
+              <div style="font-size:12px;margin-bottom:10px">⭐ ${loc.ratingCount > 0 ? loc.rating.toFixed(1) : "No ratings"}${loc.ratingCount > 0 ? ` <span style="color:#9ca3af">(${loc.ratingCount})</span>` : ""}</div>
+              <div style="display:flex;gap:6px">
+                <button
+                  onclick="window.__everstopNav('${loc.id}')"
+                  style="flex:1;background:#3D8DC4;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer"
+                >View Details</button>
+                <button
+                  onclick="window.__everstopDirections('${loc.id}', ${loc.latitude}, ${loc.longitude})"
+                  style="background:#fff;color:#3D8DC4;border:1.5px solid #3D8DC4;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px"
+                >&#9658; Route</button>
+              </div>
             </div>
           `);
-        popup.on("open", () => {
-          popup.getElement()?.querySelector("button")?.addEventListener("click", () => {
-            onLocationNav(loc.id);
-          });
-        });
         const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([loc.longitude, loc.latitude])
           .setPopup(popup)
@@ -180,6 +243,29 @@ function MapboxMap({
       map.once("styledata", addMarkers);
     }
   }, [locations]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const src = map.getSource("route") as mapboxgl.GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData({
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "LineString",
+        coordinates: routeData?.coords ?? [],
+      },
+    });
+    if (routeData && routeData.coords.length > 1) {
+      const lngs = routeData.coords.map(([lng]) => lng);
+      const lats = routeData.coords.map(([, lat]) => lat);
+      map.fitBounds(
+        [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+        { padding: 60, duration: 800 }
+      );
+    }
+  }, [routeData]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -203,8 +289,10 @@ type LeafletMapProps = {
   mapView: MapView;
   droppingPin: boolean;
   droppedPin: { lat: number; lng: number } | null;
+  routeData: RouteData | null;
   onMapClick: (lat: number, lng: number) => void;
   onLocationNav: (id: string) => void;
+  onDirections: (id: string, lat: number, lng: number) => void;
 };
 
 function LeafletMap({
@@ -213,8 +301,10 @@ function LeafletMap({
   mapView,
   droppingPin,
   droppedPin,
+  routeData,
   onMapClick,
   onLocationNav,
+  onDirections,
 }: LeafletMapProps) {
   const mapRef = useRef<LeafletMapInstance | null>(null);
 
@@ -241,6 +331,8 @@ function LeafletMap({
     return () => { map.off("click", handler); };
   }, [droppingPin, onMapClick]);
 
+  const routePositions = routeData?.coords.map(([lng, lat]) => [lat, lng] as [number, number]) ?? [];
+
   return (
     <MapContainer
       center={[39.5, -98.35]}
@@ -250,6 +342,14 @@ function LeafletMap({
       zoomControl={false}
     >
       <TileLayer url={tileUrl} attribution={ATTRIBUTION} tileSize={256} />
+
+      {routePositions.length > 1 && (
+        <>
+          <LeafletPolyline positions={routePositions} pathOptions={{ color: "#fff", weight: 8, opacity: 0.9 }} />
+          <LeafletPolyline positions={routePositions} pathOptions={{ color: "#3D8DC4", weight: 5, opacity: 1 }} />
+        </>
+      )}
+
       {droppedPin && (
         <Marker
           position={[droppedPin.lat, droppedPin.lng]}
@@ -271,16 +371,24 @@ function LeafletMap({
               <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{loc.companyName}</div>
                 <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>{loc.city}, {loc.state}</div>
-                <div style={{ fontSize: 12, marginBottom: 8 }}>
+                <div style={{ fontSize: 12, marginBottom: 10 }}>
                   ⭐ {loc.ratingCount > 0 ? loc.rating.toFixed(1) : "No ratings"}
                   {loc.ratingCount > 0 && <span style={{ color: "#9ca3af" }}> ({loc.ratingCount})</span>}
                 </div>
-                <button
-                  onClick={() => onLocationNav(loc.id)}
-                  style={{ background: "#3D8DC4", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}
-                >
-                  View Details
-                </button>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => onLocationNav(loc.id)}
+                    style={{ flex: 1, background: "#3D8DC4", color: "#fff", border: "none", borderRadius: 8, padding: "7px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    View Details
+                  </button>
+                  <button
+                    onClick={() => onDirections(loc.id, loc.latitude, loc.longitude)}
+                    style={{ background: "#fff", color: "#3D8DC4", border: "1.5px solid #3D8DC4", borderRadius: 8, padding: "7px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    ▶ Route
+                  </button>
+                </div>
               </div>
             </Popup>
           </Marker>
@@ -308,6 +416,10 @@ export default function MapScreen() {
     try { return mapboxgl.supported(); } catch { return false; }
   });
 
+  const [routeData, setRouteData] = useState<RouteData | null>(null);
+  const [routeDestName, setRouteDestName] = useState<string | null>(null);
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+
   const handleMapClick = (lat: number, lng: number) => {
     if (!droppingPin) return;
     setDroppedPin({ lat, lng });
@@ -316,7 +428,31 @@ export default function MapScreen() {
 
   const handleLocationNav = (id: string) => router.push(`/location/${id}`);
 
+  const handleDirections = (id: string, lat: number, lng: number) => {
+    const loc = results.find((l) => l.id === id);
+    setRouteDestName(loc?.companyName ?? null);
+    setIsLoadingRoute(true);
+    setRouteData(null);
+
+    if (!navigator.geolocation) {
+      setIsLoadingRoute(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const route = await fetchRoute(pos.coords.latitude, pos.coords.longitude, lat, lng);
+        setRouteData(route);
+        setIsLoadingRoute(false);
+      },
+      () => { setIsLoadingRoute(false); },
+      { timeout: 10000 }
+    );
+  };
+
+  const clearRoute = () => { setRouteData(null); setRouteDestName(null); };
+
   const WEB_TOP = 67;
+  const BOTTOM_BASE = insets.bottom + 84 + 34;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -328,8 +464,10 @@ export default function MapScreen() {
             mapView={mapView}
             droppingPin={droppingPin}
             droppedPin={droppedPin}
+            routeData={routeData}
             onMapClick={handleMapClick}
             onLocationNav={handleLocationNav}
+            onDirections={handleDirections}
             onFallback={() => setUseGL(false)}
           />
         ) : (
@@ -339,8 +477,10 @@ export default function MapScreen() {
             mapView={mapView}
             droppingPin={droppingPin}
             droppedPin={droppedPin}
+            routeData={routeData}
             onMapClick={handleMapClick}
             onLocationNav={handleLocationNav}
+            onDirections={handleDirections}
           />
         )}
       </View>
@@ -400,9 +540,40 @@ export default function MapScreen() {
         </View>
       )}
 
+      {/* Route info card */}
+      {(isLoadingRoute || routeData) && !droppedPin && (
+        <View style={[styles.routeCard, { backgroundColor: colors.card, borderColor: colors.border, bottom: BOTTOM_BASE + 16 }]}>
+          {isLoadingRoute ? (
+            <View style={styles.routeCardRow}>
+              <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
+                <Ionicons name="navigate-circle-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={[styles.routeCardText, { color: colors.mutedForeground }]}>Finding route…</Text>
+            </View>
+          ) : routeData ? (
+            <View style={styles.routeCardRow}>
+              <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
+                <Ionicons name="navigate" size={16} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.routeCardDest, { color: colors.foreground }]} numberOfLines={1}>
+                  {routeDestName}
+                </Text>
+                <Text style={[styles.routeCardMeta, { color: colors.mutedForeground }]}>
+                  {routeData.durationMin} min · {routeData.distanceMi.toFixed(1)} mi · Driving
+                </Text>
+              </View>
+              <TouchableOpacity onPress={clearRoute}>
+                <Ionicons name="close-circle" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+      )}
+
       {/* Dropped pin card */}
       {droppedPin && (
-        <View style={[styles.pinCard, { backgroundColor: colors.card, borderColor: colors.border, bottom: insets.bottom + 84 + 34 + 16 }]}>
+        <View style={[styles.pinCard, { backgroundColor: colors.card, borderColor: colors.border, bottom: BOTTOM_BASE + 16 }]}>
           <View style={styles.pinCardHeader}>
             <Ionicons name="location" size={18} color="#EF4444" />
             <Text style={[styles.pinCardTitle, { color: colors.foreground }]}>Pin Dropped</Text>
@@ -427,12 +598,17 @@ export default function MapScreen() {
       )}
 
       {/* Add / drop-pin FAB */}
-      <View style={[styles.addBtnWrap, { bottom: insets.bottom + 84 + 34 }]} pointerEvents="box-none">
+      <View style={[styles.addBtnWrap, { bottom: BOTTOM_BASE }]} pointerEvents="box-none">
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => {
-            if (droppingPin) { setDroppingPin(false); }
-            else { setDroppedPin(null); setDroppingPin(true); }
+            if (droppingPin) {
+              setDroppingPin(false);
+            } else {
+              setDroppedPin(null);
+              clearRoute();
+              setDroppingPin(true);
+            }
           }}
           activeOpacity={0.85}
         >
@@ -465,6 +641,16 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10,
   },
   dropBannerText: { color: "#fff", fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
+  routeCard: {
+    position: "absolute", left: 16, right: 16, borderRadius: 16, borderWidth: 1,
+    paddingHorizontal: 14, paddingVertical: 12,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 8,
+  },
+  routeCardRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  routeIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  routeCardDest: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  routeCardMeta: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  routeCardText: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
   pinCard: {
     position: "absolute", left: 16, right: 16, borderRadius: 16, borderWidth: 1, padding: 14, gap: 10,
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 10,

@@ -4,6 +4,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MapView, {
   Callout,
   Marker,
+  Polyline,
   PROVIDER_DEFAULT,
   UrlTile,
 } from "react-native-maps";
@@ -37,11 +38,12 @@ type MapLayerProps = {
   isDark: boolean;
   mapType?: "standard" | "satellite";
   droppedPin?: { lat: number; lng: number } | null;
+  routeCoords?: [number, number][] | null;
   onMapPress?: (lat: number, lng: number) => void;
   onMarkerPress: (id: string, lat: number, lng: number) => void;
   onCalloutPress: (id: string) => void;
+  onDirectionsPress?: (id: string, lat: number, lng: number) => void;
 };
-
 
 const CATEGORY_ICONS: Record<string, { icon: string; set: "ionicons" | "material" }> = {
   "Dry Van":          { icon: "cube",           set: "ionicons" },
@@ -126,15 +128,21 @@ export function MapLayer({
   isDark,
   mapType = "standard",
   droppedPin,
+  routeCoords,
   onMapPress,
   onMarkerPress,
   onCalloutPress,
+  onDirectionsPress,
 }: MapLayerProps) {
   const colors = useColors();
 
   const tileUrl = mapType === "satellite"
     ? mapboxUrl("satellite-streets-v12")
     : isDark ? mapboxUrl("dark-v11") : mapboxUrl("streets-v12");
+
+  const routeLatLngs = routeCoords && routeCoords.length > 1
+    ? routeCoords.map(([lng, lat]) => ({ latitude: lat, longitude: lng }))
+    : null;
 
   return (
     <MapView
@@ -162,6 +170,24 @@ export function MapLayer({
         tileSize={256}
         zIndex={-1}
       />
+
+      {routeLatLngs && (
+        <>
+          <Polyline
+            coordinates={routeLatLngs}
+            strokeWidth={8}
+            strokeColor="rgba(255,255,255,0.9)"
+            zIndex={1}
+          />
+          <Polyline
+            coordinates={routeLatLngs}
+            strokeWidth={5}
+            strokeColor="#3D8DC4"
+            zIndex={2}
+          />
+        </>
+      )}
+
       {droppedPin && (
         <Marker
           coordinate={{ latitude: droppedPin.lat, longitude: droppedPin.lng }}
@@ -170,6 +196,7 @@ export function MapLayer({
           <Ionicons name="location" size={38} color="#EF4444" />
         </Marker>
       )}
+
       {locations.map((loc) => (
         <Marker
           key={loc.id}
@@ -178,7 +205,7 @@ export function MapLayer({
           onPress={() => onMarkerPress(loc.id, loc.latitude, loc.longitude)}
         >
           <CategoryPin location={loc} selected={selectedId === loc.id} />
-          <Callout tooltip onPress={() => onCalloutPress(loc.id)}>
+          <Callout tooltip>
             <View
               style={[
                 styles.callout,
@@ -220,12 +247,23 @@ export function MapLayer({
                   </>
                 )}
               </View>
-              <TouchableOpacity
-                style={[styles.calloutBtn, { backgroundColor: getPinColor(loc) }]}
-                onPress={() => onCalloutPress(loc.id)}
-              >
-                <Text style={styles.calloutBtnText}>View Details</Text>
-              </TouchableOpacity>
+              <View style={styles.calloutBtns}>
+                <TouchableOpacity
+                  style={[styles.calloutBtnPrimary, { backgroundColor: getPinColor(loc) }]}
+                  onPress={() => onCalloutPress(loc.id)}
+                >
+                  <Text style={styles.calloutBtnText}>View Details</Text>
+                </TouchableOpacity>
+                {onDirectionsPress && (
+                  <TouchableOpacity
+                    style={[styles.calloutBtnSecondary, { borderColor: getPinColor(loc) }]}
+                    onPress={() => onDirectionsPress(loc.id, loc.latitude, loc.longitude)}
+                  >
+                    <Ionicons name="navigate" size={13} color={getPinColor(loc)} />
+                    <Text style={[styles.calloutBtnSecText, { color: getPinColor(loc) }]}>Route</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </Callout>
         </Marker>
@@ -322,15 +360,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_500Medium",
   },
-  calloutBtn: {
+  calloutBtns: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 4,
+  },
+  calloutBtnPrimary: {
+    flex: 1,
     borderRadius: 8,
     paddingVertical: 7,
     alignItems: "center",
-    marginTop: 4,
+    justifyContent: "center",
+  },
+  calloutBtnSecondary: {
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 4,
+    borderWidth: 1.5,
   },
   calloutBtnText: {
     color: "#fff",
     fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  calloutBtnSecText: {
+    fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
 });

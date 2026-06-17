@@ -294,6 +294,13 @@ export default function AuthScreen() {
               By creating an account you agree to our{" "}
               <Text
                 style={[styles.disclaimer, { color: colors.primary }]}
+                onPress={() => Linking.openURL("https://www.everstop.app/termsofservice")}
+              >
+                Terms of Service
+              </Text>
+              {" "}and{" "}
+              <Text
+                style={[styles.disclaimer, { color: colors.primary }]}
                 onPress={() => Linking.openURL("https://www.everstop.app/privacypolicy")}
               >
                 Privacy Policy

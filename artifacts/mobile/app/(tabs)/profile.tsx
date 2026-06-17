@@ -88,12 +88,21 @@ export default function ProfileScreen() {
           >
             <Text style={styles.loginBtnText}>Sign In / Register</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => Linking.openURL("https://www.everstop.app/privacypolicy")}
-            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-          >
-            <Text style={[styles.privacyLink, { color: colors.primary }]}>Privacy Policy</Text>
-          </TouchableOpacity>
+          <View style={styles.legalLinks}>
+            <TouchableOpacity
+              onPress={() => Linking.openURL("https://www.everstop.app/termsofservice")}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
+              <Text style={[styles.privacyLink, { color: colors.primary }]}>Terms of Service</Text>
+            </TouchableOpacity>
+            <Text style={[styles.privacyLink, { color: colors.mutedForeground }]}>·</Text>
+            <TouchableOpacity
+              onPress={() => Linking.openURL("https://www.everstop.app/privacypolicy")}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
+              <Text style={[styles.privacyLink, { color: colors.primary }]}>Privacy Policy</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -330,6 +339,14 @@ export default function ProfileScreen() {
       <View style={[styles.accountActions, { borderTopColor: colors.border }]}>
         <TouchableOpacity
           style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => Linking.openURL("https://www.everstop.app/termsofservice")}
+        >
+          <Ionicons name="reader-outline" size={20} color={colors.foreground} />
+          <Text style={[styles.accountBtnText, { color: colors.foreground }]}>Terms of Service</Text>
+          <Ionicons name="open-outline" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => Linking.openURL("https://www.everstop.app/privacypolicy")}
         >
           <Ionicons name="document-text-outline" size={20} color={colors.foreground} />
@@ -519,4 +536,5 @@ const styles = StyleSheet.create({
   },
   loginBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   privacyLink: { fontSize: 14, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
+  legalLinks: { flexDirection: "row", alignItems: "center", gap: 8 },
 });

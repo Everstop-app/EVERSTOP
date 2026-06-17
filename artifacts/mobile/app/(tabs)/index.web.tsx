@@ -48,6 +48,15 @@ function getPinColor(loc: Location): string {
   return RATING_COLORS.low;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function makePinEl(color: string, size = 14): HTMLElement {
   const el = document.createElement("div");
   el.innerHTML = `<svg width="${size}" height="${Math.round(size * 1.43)}" viewBox="0 0 14 20" xmlns="http://www.w3.org/2000/svg"><path d="M7 0C3.134 0 0 3.134 0 7c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z" fill="${color}"/><circle cx="7" cy="7" r="2.5" fill="#fff"/></svg>`;
@@ -211,19 +220,28 @@ function MapboxMap({
       locations.forEach((loc) => {
         const color = getPinColor(loc);
         const el = makePinEl(color);
+        const safeId = escapeHtml(loc.id);
+        const safeName = escapeHtml(loc.companyName);
+        const safeCity = escapeHtml(loc.city);
+        const safeState = escapeHtml(loc.state);
+        const safeRating = loc.ratingCount > 0 ? escapeHtml(loc.rating.toFixed(1)) : "No ratings";
+        const safeCount = loc.ratingCount > 0 ? escapeHtml(String(loc.ratingCount)) : "";
+        const safeLat = Number(loc.latitude).toFixed(7);
+        const safeLng = Number(loc.longitude).toFixed(7);
+
         const popup = new mapboxgl.Popup({ offset: 20, closeButton: false, maxWidth: "230px" })
           .setHTML(`
             <div style="font-family:sans-serif;padding:4px 0">
-              <div style="font-weight:700;font-size:14px;margin-bottom:2px">${loc.companyName}</div>
-              <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${loc.city}, ${loc.state}</div>
-              <div style="font-size:12px;margin-bottom:10px">⭐ ${loc.ratingCount > 0 ? loc.rating.toFixed(1) : "No ratings"}${loc.ratingCount > 0 ? ` <span style="color:#9ca3af">(${loc.ratingCount})</span>` : ""}</div>
+              <div style="font-weight:700;font-size:14px;margin-bottom:2px">${safeName}</div>
+              <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${safeCity}, ${safeState}</div>
+              <div style="font-size:12px;margin-bottom:10px">⭐ ${safeRating}${safeCount ? ` <span style="color:#9ca3af">(${safeCount})</span>` : ""}</div>
               <div style="display:flex;gap:6px">
                 <button
-                  onclick="window.__everstopNav('${loc.id}')"
+                  onclick="window.__everstopNav('${safeId}')"
                   style="flex:1;background:#3D8DC4;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer"
                 >View Details</button>
                 <button
-                  onclick="window.__everstopDirections('${loc.id}', ${loc.latitude}, ${loc.longitude})"
+                  onclick="window.__everstopDirections('${safeId}', ${safeLat}, ${safeLng})"
                   style="background:#fff;color:#3D8DC4;border:1.5px solid #3D8DC4;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px"
                 >&#9658; Route</button>
               </div>

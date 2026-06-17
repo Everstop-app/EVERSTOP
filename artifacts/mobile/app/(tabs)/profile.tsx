@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import React from "react";
 import {
   Image,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -86,6 +87,12 @@ export default function ProfileScreen() {
             activeOpacity={0.85}
           >
             <Text style={styles.loginBtnText}>Sign In / Register</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => Linking.openURL("https://www.everstop.app/privacypolicy")}
+            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+          >
+            <Text style={[styles.privacyLink, { color: colors.primary }]}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -323,6 +330,14 @@ export default function ProfileScreen() {
       <View style={[styles.accountActions, { borderTopColor: colors.border }]}>
         <TouchableOpacity
           style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => Linking.openURL("https://www.everstop.app/privacypolicy")}
+        >
+          <Ionicons name="document-text-outline" size={20} color={colors.foreground} />
+          <Text style={[styles.accountBtnText, { color: colors.foreground }]}>Privacy Policy</Text>
+          <Ionicons name="open-outline" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => {
             if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             logout();
@@ -503,4 +518,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   loginBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  privacyLink: { fontSize: 14, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
 });

@@ -6,6 +6,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -290,7 +291,14 @@ export default function AuthScreen() {
 
           {mode === "register" && (
             <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
-              By creating an account you agree to contribute accurate information to the EverStop community.
+              By creating an account you agree to our{" "}
+              <Text
+                style={[styles.disclaimer, { color: colors.primary }]}
+                onPress={() => Linking.openURL("https://www.everstop.app/privacypolicy")}
+              >
+                Privacy Policy
+              </Text>
+              {" "}and to contribute accurate information to the EverStop community.
             </Text>
           )}
         </View>

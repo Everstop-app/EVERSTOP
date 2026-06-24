@@ -19,6 +19,7 @@ import { useLocations } from "@/contexts/LocationsContext";
 import { SearchBar } from "@/components/SearchBar";
 import type { Location } from "@/components/MapLayer";
 import { fetchRoute, type RouteData } from "@/utils/mapboxRouting";
+import { fetchRouteHazards, type Hazard, type HazardType } from "@/utils/routeHazards";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -57,6 +58,21 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
+const HAZARD_WEB_CFG: Record<HazardType, { bg: string; symbol: string; label: string }> = {
+  bridge:       { bg: "#F59E0B", symbol: "⚠", label: "Low Clearance" },
+  weighstation: { bg: "#1E3A8A", symbol: "W",  label: "Weigh Station" },
+  catscale:     { bg: "#0E7490", symbol: "C",  label: "CAT Scale" },
+  railroad:     { bg: "#7C3AED", symbol: "R",  label: "Railroad Hump" },
+};
+
+function makeHazardEl(type: HazardType): HTMLElement {
+  const { bg, symbol } = HAZARD_WEB_CFG[type];
+  const el = document.createElement("div");
+  el.innerHTML = `<div style="width:28px;height:28px;background:${bg};border:2.5px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.45);font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:sans-serif">${symbol}</div>`;
+  el.style.display = "block";
+  return el;
+}
+
 function makePinEl(color: string, size = 14): HTMLElement {
   const el = document.createElement("div");
   el.innerHTML = `<svg width="${size}" height="${Math.round(size * 1.43)}" viewBox="0 0 14 20" xmlns="http://www.w3.org/2000/svg"><path d="M7 0C3.134 0 0 3.134 0 7c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z" fill="${color}"/><circle cx="7" cy="7" r="2.5" fill="#fff"/></svg>`;
@@ -83,6 +99,7 @@ type MapboxMapProps = {
   droppingPin: boolean;
   droppedPin: { lat: number; lng: number } | null;
   routeData: RouteData | null;
+  hazards: Hazard[];
   onMapClick: (lat: number, lng: number) => void;
   onLocationNav: (id: string) => void;
   onDirections: (id: string, lat: number, lng: number) => void;
@@ -96,6 +113,7 @@ function MapboxMap({
   droppingPin,
   droppedPin,
   routeData,
+  hazards,
   onMapClick,
   onLocationNav,
   onDirections,
@@ -104,6 +122,7 @@ function MapboxMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const hazardMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const droppedMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const droppingRef = useRef(droppingPin);
   droppingRef.current = droppingPin;
@@ -296,6 +315,33 @@ function MapboxMap({
       .addTo(map);
   }, [droppedPin]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    hazardMarkersRef.current.forEach((m) => m.remove());
+    hazardMarkersRef.current = [];
+
+    const addHazardMarkers = () => {
+      hazards.forEach((h) => {
+        const el = makeHazardEl(h.type);
+        const cfg = HAZARD_WEB_CFG[h.type];
+        const popup = new mapboxgl.Popup({ offset: 14, closeButton: false, maxWidth: "200px" })
+          .setHTML(`<div style="font-family:sans-serif;padding:4px 0"><div style="font-weight:700;font-size:13px;margin-bottom:2px;color:${cfg.bg}">${escapeHtml(h.label)}</div>${h.detail ? `<div style="font-size:11px;color:#6b7280">${escapeHtml(h.detail)}</div>` : ""}</div>`);
+        const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat([h.lng, h.lat])
+          .setPopup(popup)
+          .addTo(map);
+        hazardMarkersRef.current.push(marker);
+      });
+    };
+
+    if (map.isStyleLoaded()) {
+      addHazardMarkers();
+    } else {
+      map.once("styledata", addHazardMarkers);
+    }
+  }, [hazards]);
+
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }
 
@@ -308,6 +354,7 @@ type LeafletMapProps = {
   droppingPin: boolean;
   droppedPin: { lat: number; lng: number } | null;
   routeData: RouteData | null;
+  hazards: Hazard[];
   onMapClick: (lat: number, lng: number) => void;
   onLocationNav: (id: string) => void;
   onDirections: (id: string, lat: number, lng: number) => void;
@@ -320,6 +367,7 @@ function LeafletMap({
   droppingPin,
   droppedPin,
   routeData,
+  hazards,
   onMapClick,
   onLocationNav,
   onDirections,
@@ -377,6 +425,27 @@ function LeafletMap({
           })}
         />
       )}
+
+      {hazards.map((h) => {
+        const cfg = HAZARD_WEB_CFG[h.type];
+        return (
+          <Marker
+            key={`h-${h.id}`}
+            position={[h.lat, h.lng]}
+            icon={L.divIcon({
+              html: `<div style="width:28px;height:28px;background:${cfg.bg};border:2.5px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.45);font-size:13px;font-weight:800;color:#fff;font-family:sans-serif">${cfg.symbol}</div>`,
+              className: "", iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -14],
+            })}
+          >
+            <Popup>
+              <div style={{ fontFamily: "sans-serif", minWidth: 120 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: cfg.bg, marginBottom: 2 }}>{h.label}</div>
+                {h.detail && <div style={{ fontSize: 11, color: "#6b7280" }}>{h.detail}</div>}
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
       {locations.map((loc) => {
         const color = getPinColor(loc);
         const icon = L.divIcon({
@@ -437,6 +506,8 @@ export default function MapScreen() {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [routeDestName, setRouteDestName] = useState<string | null>(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  const [hazards, setHazards] = useState<Hazard[]>([]);
+  const [loadingHazards, setLoadingHazards] = useState(false);
 
   const handleMapClick = (lat: number, lng: number) => {
     if (!droppingPin) return;
@@ -451,6 +522,8 @@ export default function MapScreen() {
     setRouteDestName(loc?.companyName ?? null);
     setIsLoadingRoute(true);
     setRouteData(null);
+    setHazards([]);
+    setLoadingHazards(false);
 
     if (!navigator.geolocation) {
       setIsLoadingRoute(false);
@@ -461,13 +534,25 @@ export default function MapScreen() {
         const route = await fetchRoute(pos.coords.latitude, pos.coords.longitude, lat, lng);
         setRouteData(route);
         setIsLoadingRoute(false);
+        if (route) {
+          setLoadingHazards(true);
+          fetchRouteHazards(route.coords).then((h) => {
+            setHazards(h);
+            setLoadingHazards(false);
+          });
+        }
       },
       () => { setIsLoadingRoute(false); },
       { timeout: 10000 }
     );
   };
 
-  const clearRoute = () => { setRouteData(null); setRouteDestName(null); };
+  const clearRoute = () => {
+    setRouteData(null);
+    setRouteDestName(null);
+    setHazards([]);
+    setLoadingHazards(false);
+  };
 
   const WEB_TOP = 67;
   const BOTTOM_BASE = insets.bottom + 84 + 34;
@@ -483,6 +568,7 @@ export default function MapScreen() {
             droppingPin={droppingPin}
             droppedPin={droppedPin}
             routeData={routeData}
+            hazards={hazards}
             onMapClick={handleMapClick}
             onLocationNav={handleLocationNav}
             onDirections={handleDirections}
@@ -496,6 +582,7 @@ export default function MapScreen() {
             droppingPin={droppingPin}
             droppedPin={droppedPin}
             routeData={routeData}
+            hazards={hazards}
             onMapClick={handleMapClick}
             onLocationNav={handleLocationNav}
             onDirections={handleDirections}
@@ -569,22 +656,57 @@ export default function MapScreen() {
               <Text style={[styles.routeCardText, { color: colors.mutedForeground }]}>Finding route…</Text>
             </View>
           ) : routeData ? (
-            <View style={styles.routeCardRow}>
-              <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
-                <Ionicons name="navigate" size={16} color={colors.primary} />
+            <>
+              <View style={styles.routeCardRow}>
+                <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
+                  <Ionicons name="navigate" size={16} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.routeCardDest, { color: colors.foreground }]} numberOfLines={1}>
+                    {routeDestName}
+                  </Text>
+                  <Text style={[styles.routeCardMeta, { color: colors.mutedForeground }]}>
+                    {routeData.durationMin} min · {routeData.distanceMi.toFixed(1)} mi · Driving
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={clearRoute}>
+                  <Ionicons name="close-circle" size={22} color={colors.mutedForeground} />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.routeCardDest, { color: colors.foreground }]} numberOfLines={1}>
-                  {routeDestName}
+              {loadingHazards && (
+                <Text style={[styles.hazardScanText, { color: colors.mutedForeground }]}>
+                  Scanning for route hazards…
                 </Text>
-                <Text style={[styles.routeCardMeta, { color: colors.mutedForeground }]}>
-                  {routeData.durationMin} min · {routeData.distanceMi.toFixed(1)} mi · Driving
-                </Text>
-              </View>
-              <TouchableOpacity onPress={clearRoute}>
-                <Ionicons name="close-circle" size={22} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
+              )}
+              {!loadingHazards && hazards.length > 0 && (
+                <View style={styles.hazardChipsRow}>
+                  {hazards.filter((h) => h.type === "bridge").length > 0 && (
+                    <View style={[styles.hazardChip, { backgroundColor: "#F59E0B1A" }]}>
+                      <Text style={[styles.hazardChipSymbol, { color: "#F59E0B" }]}>⚠</Text>
+                      <Text style={[styles.hazardChipLabel, { color: "#F59E0B" }]}>{hazards.filter((h) => h.type === "bridge").length} Low Bridge{hazards.filter((h) => h.type === "bridge").length > 1 ? "s" : ""}</Text>
+                    </View>
+                  )}
+                  {hazards.filter((h) => h.type === "weighstation").length > 0 && (
+                    <View style={[styles.hazardChip, { backgroundColor: "#1E3A8A1A" }]}>
+                      <Text style={[styles.hazardChipSymbol, { color: "#1E3A8A" }]}>W</Text>
+                      <Text style={[styles.hazardChipLabel, { color: "#1E3A8A" }]}>{hazards.filter((h) => h.type === "weighstation").length} Weigh Stn{hazards.filter((h) => h.type === "weighstation").length > 1 ? "s" : ""}</Text>
+                    </View>
+                  )}
+                  {hazards.filter((h) => h.type === "catscale").length > 0 && (
+                    <View style={[styles.hazardChip, { backgroundColor: "#0E74901A" }]}>
+                      <Text style={[styles.hazardChipSymbol, { color: "#0E7490" }]}>C</Text>
+                      <Text style={[styles.hazardChipLabel, { color: "#0E7490" }]}>{hazards.filter((h) => h.type === "catscale").length} CAT Scale{hazards.filter((h) => h.type === "catscale").length > 1 ? "s" : ""}</Text>
+                    </View>
+                  )}
+                  {hazards.filter((h) => h.type === "railroad").length > 0 && (
+                    <View style={[styles.hazardChip, { backgroundColor: "#7C3AED1A" }]}>
+                      <Text style={[styles.hazardChipSymbol, { color: "#7C3AED" }]}>R</Text>
+                      <Text style={[styles.hazardChipLabel, { color: "#7C3AED" }]}>{hazards.filter((h) => h.type === "railroad").length} RR Hump{hazards.filter((h) => h.type === "railroad").length > 1 ? "s" : ""}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </>
           ) : null}
         </View>
       )}
@@ -678,6 +800,11 @@ const styles = StyleSheet.create({
   pinCardCoords: { fontSize: 12, fontFamily: "Inter_400Regular" },
   pinCardBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 12 },
   pinCardBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  hazardScanText: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 6, fontStyle: "italic" },
+  hazardChipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  hazardChip: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  hazardChipSymbol: { fontSize: 11, fontWeight: "700" },
+  hazardChipLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
   addBtnWrap: { position: "absolute", right: 20 },
   addBtn: { alignItems: "center", justifyContent: "center" },
   addBtnInner: {

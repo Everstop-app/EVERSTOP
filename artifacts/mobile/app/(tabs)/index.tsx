@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -19,6 +20,16 @@ import { SearchBar } from "@/components/SearchBar";
 import { useColors } from "@/hooks/useColors";
 import { useLocations } from "@/contexts/LocationsContext";
 import { fetchRoute, type RouteData } from "@/utils/mapboxRouting";
+import { fetchRouteHazards, type Hazard } from "@/utils/routeHazards";
+
+function HazardChip({ color, symbol, label }: { color: string; symbol: string; label: string }) {
+  return (
+    <View style={[styles.hazardChip, { backgroundColor: color + "1A" }]}>
+      <Text style={[styles.hazardChipSymbol, { color }]}>{symbol}</Text>
+      <Text style={[styles.hazardChipLabel, { color }]}>{label}</Text>
+    </View>
+  );
+}
 
 export default function MapScreen() {
   const colors = useColors();
@@ -37,6 +48,8 @@ export default function MapScreen() {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [routeDestName, setRouteDestName] = useState<string | null>(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  const [hazards, setHazards] = useState<Hazard[]>([]);
+  const [loadingHazards, setLoadingHazards] = useState(false);
 
   const mapRef = useRef<any>(null);
   const results = filteredLocations(query);
@@ -63,6 +76,8 @@ export default function MapScreen() {
     setIsLoadingRoute(true);
     setRouteData(null);
     setDroppedPin(null);
+    setHazards([]);
+    setLoadingHazards(false);
 
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -73,6 +88,7 @@ export default function MapScreen() {
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const route = await fetchRoute(pos.coords.latitude, pos.coords.longitude, lat, lng);
       setRouteData(route);
+      setIsLoadingRoute(false);
 
       if (route && mapRef.current) {
         const midIdx = Math.floor(route.coords.length / 2);
@@ -82,9 +98,15 @@ export default function MapScreen() {
           800
         );
       }
+
+      if (route) {
+        setLoadingHazards(true);
+        fetchRouteHazards(route.coords).then((h) => {
+          setHazards(h);
+          setLoadingHazards(false);
+        });
+      }
     } catch {
-      // location or network failure — silently clear loading
-    } finally {
       setIsLoadingRoute(false);
     }
   };
@@ -92,6 +114,8 @@ export default function MapScreen() {
   const clearRoute = () => {
     setRouteData(null);
     setRouteDestName(null);
+    setHazards([]);
+    setLoadingHazards(false);
   };
 
   return (
@@ -104,6 +128,7 @@ export default function MapScreen() {
         mapType={mapType}
         droppedPin={droppedPin}
         routeCoords={routeData?.coords ?? null}
+        hazards={hazards}
         onMapPress={droppingPin ? (lat, lng) => { setDroppedPin({ lat, lng }); setDroppingPin(false); } : undefined}
         onMarkerPress={handleMarkerPress}
         onCalloutPress={navigateToLocation}
@@ -176,22 +201,66 @@ export default function MapScreen() {
               <Text style={[styles.routeCardText, { color: colors.mutedForeground }]}>Finding route…</Text>
             </View>
           ) : routeData ? (
-            <View style={styles.routeCardRow}>
-              <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
-                <Ionicons name="navigate" size={16} color={colors.primary} />
+            <>
+              <View style={styles.routeCardRow}>
+                <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
+                  <Ionicons name="navigate" size={16} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.routeCardDest, { color: colors.foreground }]} numberOfLines={1}>
+                    {routeDestName}
+                  </Text>
+                  <Text style={[styles.routeCardMeta, { color: colors.mutedForeground }]}>
+                    {routeData.durationMin} min · {routeData.distanceMi.toFixed(1)} mi · Driving
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={clearRoute} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                  <Ionicons name="close-circle" size={22} color={colors.mutedForeground} />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.routeCardDest, { color: colors.foreground }]} numberOfLines={1}>
-                  {routeDestName}
+              {loadingHazards && (
+                <Text style={[styles.hazardScanText, { color: colors.mutedForeground }]}>
+                  Scanning for route hazards…
                 </Text>
-                <Text style={[styles.routeCardMeta, { color: colors.mutedForeground }]}>
-                  {routeData.durationMin} min · {routeData.distanceMi.toFixed(1)} mi · Driving
-                </Text>
-              </View>
-              <TouchableOpacity onPress={clearRoute} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                <Ionicons name="close-circle" size={22} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
+              )}
+              {!loadingHazards && hazards.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginTop: 8 }}
+                  contentContainerStyle={styles.hazardChipsRow}
+                >
+                  {hazards.filter((h) => h.type === "bridge").length > 0 && (
+                    <HazardChip
+                      color="#F59E0B"
+                      symbol="⚠"
+                      label={`${hazards.filter((h) => h.type === "bridge").length} Low Bridge${hazards.filter((h) => h.type === "bridge").length > 1 ? "s" : ""}`}
+                    />
+                  )}
+                  {hazards.filter((h) => h.type === "weighstation").length > 0 && (
+                    <HazardChip
+                      color="#1E3A8A"
+                      symbol="W"
+                      label={`${hazards.filter((h) => h.type === "weighstation").length} Weigh Stn${hazards.filter((h) => h.type === "weighstation").length > 1 ? "s" : ""}`}
+                    />
+                  )}
+                  {hazards.filter((h) => h.type === "catscale").length > 0 && (
+                    <HazardChip
+                      color="#0E7490"
+                      symbol="C"
+                      label={`${hazards.filter((h) => h.type === "catscale").length} CAT Scale${hazards.filter((h) => h.type === "catscale").length > 1 ? "s" : ""}`}
+                    />
+                  )}
+                  {hazards.filter((h) => h.type === "railroad").length > 0 && (
+                    <HazardChip
+                      color="#7C3AED"
+                      symbol="R"
+                      label={`${hazards.filter((h) => h.type === "railroad").length} RR Hump${hazards.filter((h) => h.type === "railroad").length > 1 ? "s" : ""}`}
+                    />
+                  )}
+                </ScrollView>
+              )}
+            </>
           ) : null}
         </View>
       )}
@@ -368,6 +437,23 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   pinCardBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  hazardScanText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 6,
+    fontStyle: "italic",
+  },
+  hazardChipsRow: { flexDirection: "row", gap: 6, paddingRight: 4 },
+  hazardChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  hazardChipSymbol: { fontSize: 11, fontWeight: "700" },
+  hazardChipLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
   addBtnWrap: {
     position: "absolute",
     right: 20,

@@ -10,6 +10,7 @@ import MapView, {
 } from "react-native-maps";
 
 import { useColors } from "@/hooks/useColors";
+import type { Hazard, HazardType } from "@/utils/routeHazards";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 function mapboxUrl(style: string) {
@@ -39,6 +40,7 @@ type MapLayerProps = {
   mapType?: "standard" | "satellite";
   droppedPin?: { lat: number; lng: number } | null;
   routeCoords?: [number, number][] | null;
+  hazards?: Hazard[];
   onMapPress?: (lat: number, lng: number) => void;
   onMarkerPress: (id: string, lat: number, lng: number) => void;
   onCalloutPress: (id: string) => void;
@@ -73,6 +75,22 @@ function getPinColor(location: Location): string {
   if (rating >= 4.0) return "#22C55E";
   if (rating >= 3.0) return "#F59E0B";
   return "#EF4444";
+}
+
+const HAZARD_CFG: Record<HazardType, { bg: string; symbol: string }> = {
+  bridge:       { bg: "#F59E0B", symbol: "⚠" },
+  weighstation: { bg: "#1E3A8A", symbol: "W" },
+  catscale:     { bg: "#0E7490", symbol: "C" },
+  railroad:     { bg: "#7C3AED", symbol: "R" },
+};
+
+function HazardPin({ type }: { type: HazardType }) {
+  const { bg, symbol } = HAZARD_CFG[type];
+  return (
+    <View style={[styles.hazardPin, { backgroundColor: bg }]}>
+      <Text style={styles.hazardPinText}>{symbol}</Text>
+    </View>
+  );
 }
 
 function isTrustedLocation(location: Location): boolean {
@@ -129,6 +147,7 @@ export function MapLayer({
   mapType = "standard",
   droppedPin,
   routeCoords,
+  hazards = [],
   onMapPress,
   onMarkerPress,
   onCalloutPress,
@@ -196,6 +215,25 @@ export function MapLayer({
           <Ionicons name="location" size={38} color="#EF4444" />
         </Marker>
       )}
+
+      {hazards.map((h) => (
+        <Marker
+          key={`h-${h.id}`}
+          coordinate={{ latitude: h.lat, longitude: h.lng }}
+          tracksViewChanges={false}
+          anchor={{ x: 0.5, y: 0.5 }}
+        >
+          <HazardPin type={h.type} />
+          <Callout tooltip>
+            <View style={[styles.hazardCallout, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.hazardCalloutTitle, { color: colors.foreground }]}>{h.label}</Text>
+              {h.detail ? (
+                <Text style={[styles.hazardCalloutSub, { color: colors.mutedForeground }]}>{h.detail}</Text>
+              ) : null}
+            </View>
+          </Callout>
+        </Marker>
+      ))}
 
       {locations.map((loc) => (
         <Marker
@@ -391,4 +429,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
+  hazardPin: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2.5,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  hazardPinText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  hazardCallout: {
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 10,
+    minWidth: 130,
+    maxWidth: 190,
+    gap: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+  },
+  hazardCalloutTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  hazardCalloutSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
 });

@@ -346,6 +346,57 @@ export default function ProfileScreen() {
         </View>
       )}
 
+      {/* Support section */}
+      <View style={[styles.section, { borderTopColor: colors.border, borderTopWidth: 1, paddingTop: 20 }]}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Support</Text>
+        <TouchableOpacity
+          style={[styles.supportCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => {
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/contact-support");
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.supportIconWrap, { backgroundColor: colors.primary + "18" }]}>
+            <Ionicons name="headset-outline" size={24} color={colors.primary} />
+          </View>
+          <View style={styles.supportText}>
+            <Text style={[styles.supportTitle, { color: colors.foreground }]}>Contact Support</Text>
+            <Text style={[styles.supportSub, { color: colors.mutedForeground }]}>Email, Help Center &amp; FAQs · Response within 24–48 hrs</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+        </TouchableOpacity>
+        <View style={styles.supportRow}>
+          <TouchableOpacity
+            style={[styles.supportPill, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => Linking.openURL("mailto:support@everstop.app")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="mail-outline" size={16} color={colors.primary} />
+            <Text style={[styles.supportPillText, { color: colors.foreground }]}>Email Us</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.supportPill, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => Linking.openURL("https://www.everstop.app/help")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="book-outline" size={16} color="#22C55E" />
+            <Text style={[styles.supportPillText, { color: colors.foreground }]}>Help Center</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.supportPill, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/report-content");
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="flag-outline" size={16} color="#F59E0B" />
+            <Text style={[styles.supportPillText, { color: colors.foreground }]}>Report</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Account actions */}
       <View style={[styles.accountActions, { borderTopColor: colors.border }]}>
         <TouchableOpacity
@@ -596,4 +647,34 @@ const styles = StyleSheet.create({
   privacyLink: { fontSize: 14, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
   legalLinks: { flexDirection: "row", alignItems: "center", gap: 8 },
   copyright: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", opacity: 0.6 },
+  supportCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  supportIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  supportText: { flex: 1 },
+  supportTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  supportSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  supportRow: { flexDirection: "row", gap: 10 },
+  supportPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  supportPillText: { fontSize: 13, fontFamily: "Inter_500Medium" },
 });

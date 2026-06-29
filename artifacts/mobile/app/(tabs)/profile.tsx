@@ -102,7 +102,17 @@ export default function ProfileScreen() {
             >
               <Text style={[styles.privacyLink, { color: colors.primary }]}>Privacy Policy</Text>
             </TouchableOpacity>
+            <Text style={[styles.privacyLink, { color: colors.mutedForeground }]}>·</Text>
+            <TouchableOpacity
+              onPress={() => Linking.openURL("https://www.everstop.app/dmca")}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
+              <Text style={[styles.privacyLink, { color: colors.primary }]}>DMCA</Text>
+            </TouchableOpacity>
           </View>
+          <Text style={[styles.copyright, { color: colors.mutedForeground }]}>
+            © 2026 EverStop. All rights reserved.
+          </Text>
         </View>
       </View>
     );
@@ -355,6 +365,14 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => Linking.openURL("https://www.everstop.app/dmca")}
+        >
+          <Ionicons name="shield-outline" size={20} color={colors.foreground} />
+          <Text style={[styles.accountBtnText, { color: colors.foreground }]}>DMCA / Copyright</Text>
+          <Ionicons name="open-outline" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => {
             if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             logout();
@@ -375,6 +393,9 @@ export default function ProfileScreen() {
           <Ionicons name="log-out-outline" size={20} color="#DC2626" />
           <Text style={[styles.accountBtnText, { color: "#DC2626" }]}>Log Out</Text>
         </TouchableOpacity>
+        <Text style={[styles.copyright, { color: colors.mutedForeground }]}>
+          © 2026 EverStop. All rights reserved.
+        </Text>
       </View>
     </ScrollView>
   );
@@ -537,4 +558,5 @@ const styles = StyleSheet.create({
   loginBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   privacyLink: { fontSize: 14, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
   legalLinks: { flexDirection: "row", alignItems: "center", gap: 8 },
+  copyright: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", opacity: 0.6 },
 });

@@ -37,6 +37,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string, accountType: AccountType) => Promise<boolean>;
   logout: () => void;
+  deleteAccount: () => Promise<void>;
+  forgotPassword: (email: string, newPassword: string) => Promise<boolean>;
   addPoints: (points: number) => void;
   toggleFavorite: (locationId: string) => void;
   upgradeToPremium: () => void;
@@ -175,12 +177,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (email: string, _password: string): Promise<boolean> => {
+    async (email: string, password: string): Promise<boolean> => {
       const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
       if (!stored) return false;
       const accounts = JSON.parse(stored) as Record<string, any>;
       const account = accounts[email.toLowerCase()];
       if (!account) return false;
+      if (account._password && account._password !== password) return false;
       await saveUser(migrateUser(account));
       return true;
     },
@@ -191,18 +194,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (
       name: string,
       email: string,
-      _password: string,
+      password: string,
       accountType: AccountType
     ): Promise<boolean> => {
       const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
-      const accounts = stored ? (JSON.parse(stored) as Record<string, User>) : {};
+      const accounts = stored ? (JSON.parse(stored) as Record<string, any>) : {};
       if (accounts[email.toLowerCase()]) return false;
-      const newUser = makeDefaultUser({
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        name,
-        email,
-        accountType,
-      });
+      const newUser = {
+        ...makeDefaultUser({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          name,
+          email,
+          accountType,
+        }),
+        _password: password,
+      };
       accounts[email.toLowerCase()] = newUser;
       await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
       await saveUser(newUser);
@@ -218,6 +224,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     await AsyncStorage.removeItem(USER_STORAGE_KEY);
   }, [signOut]);
+
+  const deleteAccount = useCallback(async () => {
+    const currentUser = user;
+    try {
+      if (clerkUser) {
+        await clerkUser.delete();
+      }
+      await signOut().catch(() => {});
+    } catch {}
+    if (currentUser?.email) {
+      const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
+      if (stored) {
+        const accounts = JSON.parse(stored);
+        delete accounts[currentUser.email.toLowerCase()];
+        await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+      }
+    }
+    setUser(null);
+    await AsyncStorage.removeItem(USER_STORAGE_KEY);
+  }, [user, clerkUser, signOut]);
+
+  const forgotPassword = useCallback(async (email: string, newPassword: string): Promise<boolean> => {
+    const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
+    if (!stored) return false;
+    const accounts = JSON.parse(stored);
+    const key = email.trim().toLowerCase();
+    if (!accounts[key]) return false;
+    accounts[key] = { ...accounts[key], _password: newPassword };
+    await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+    return true;
+  }, []);
 
   const addPoints = useCallback(
     (pts: number) => {
@@ -302,6 +339,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        deleteAccount,
+        forgotPassword,
         addPoints,
         toggleFavorite,
         upgradeToPremium,

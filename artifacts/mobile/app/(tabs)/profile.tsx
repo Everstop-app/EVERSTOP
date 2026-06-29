@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React from "react";
 import {
+  Alert,
   Image,
   Linking,
   Platform,
@@ -63,7 +64,7 @@ const BUSINESS_RANK_ICONS: Record<UserRank, string> = {
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, deleteAccount, updateUser } = useAuth();
   const { locations, filteredLocations } = useLocations();
 
   const WEB_TOP = Platform.OS === "web" ? 67 : 0;
@@ -381,6 +382,31 @@ export default function ProfileScreen() {
         >
           <Ionicons name="swap-horizontal-outline" size={20} color={colors.foreground} />
           <Text style={[styles.accountBtnText, { color: colors.foreground }]}>Change Account</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => {
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            Alert.alert(
+              "Delete Account",
+              "This will permanently delete your account and all your data. This action cannot be undone.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: async () => {
+                    await deleteAccount();
+                    router.replace("/login");
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Ionicons name="trash-outline" size={20} color="#DC2626" />
+          <Text style={[styles.accountBtnText, { color: "#DC2626" }]}>Delete Account</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
         <TouchableOpacity

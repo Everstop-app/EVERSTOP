@@ -289,6 +289,16 @@ export default function AuthScreen() {
             )}
           </TouchableOpacity>
 
+          {mode === "login" && (
+            <TouchableOpacity
+              onPress={() => router.push("/forgot-password")}
+              hitSlop={8}
+              style={{ alignSelf: "center" }}
+            >
+              <Text style={[styles.forgotLink, { color: colors.primary }]}>Forgot password?</Text>
+            </TouchableOpacity>
+          )}
+
           {mode === "register" && (
             <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
               By creating an account you agree to our{" "}
@@ -401,4 +411,5 @@ const styles = StyleSheet.create({
   },
   submitBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   disclaimer: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
+  forgotLink: { fontSize: 14, fontFamily: "Inter_500Medium" },
 });

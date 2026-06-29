@@ -104,7 +104,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <Text style={[styles.privacyLink, { color: colors.mutedForeground }]}>·</Text>
             <TouchableOpacity
-              onPress={() => Linking.openURL("https://www.everstop.app/dmca")}
+              onPress={() => router.push("/dmca")}
               hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
             >
               <Text style={[styles.privacyLink, { color: colors.primary }]}>DMCA</Text>
@@ -365,11 +365,11 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => Linking.openURL("https://www.everstop.app/dmca")}
+          onPress={() => router.push("/dmca")}
         >
           <Ionicons name="shield-outline" size={20} color={colors.foreground} />
           <Text style={[styles.accountBtnText, { color: colors.foreground }]}>DMCA / Copyright</Text>
-          <Ionicons name="open-outline" size={16} color={colors.mutedForeground} />
+          <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}

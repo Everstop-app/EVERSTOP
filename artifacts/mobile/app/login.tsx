@@ -29,18 +29,74 @@ type SocialProvider = {
   key: string;
   strategy: ClerkOAuthStrategy;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
+  renderIcon: (loading: boolean) => React.ReactNode;
 };
 
+function GoogleIcon() {
+  return (
+    <View style={googleStyles.container}>
+      <Text style={[googleStyles.g, googleStyles.gBlue]}>G</Text>
+      <View style={googleStyles.colorBar}>
+        <View style={[googleStyles.dot, { backgroundColor: "#4285F4" }]} />
+        <View style={[googleStyles.dot, { backgroundColor: "#34A853" }]} />
+        <View style={[googleStyles.dot, { backgroundColor: "#FBBC05" }]} />
+        <View style={[googleStyles.dot, { backgroundColor: "#EA4335" }]} />
+      </View>
+    </View>
+  );
+}
+
+const googleStyles = StyleSheet.create({
+  container: { width: 26, height: 26, alignItems: "center", justifyContent: "center" },
+  g: { fontSize: 22, fontFamily: "Inter_700Bold", lineHeight: 26 },
+  gBlue: { color: "#4285F4" },
+  colorBar: { flexDirection: "row", gap: 2, position: "absolute", bottom: 0 },
+  dot: { width: 5, height: 2, borderRadius: 1 },
+});
+
 const SOCIALS: SocialProvider[] = [
-  { key: "google", strategy: "oauth_google", label: "Google", icon: "logo-google", color: "#DB4437" },
-  { key: "apple", strategy: "oauth_apple", label: "Apple", icon: "logo-apple", color: "#000000" },
-  { key: "github", strategy: "oauth_github", label: "GitHub", icon: "logo-github", color: "#333333" },
-  { key: "x", strategy: "oauth_x", label: "X", icon: "logo-x", color: "#000000" },
+  {
+    key: "google",
+    strategy: "oauth_google",
+    label: "Google",
+    renderIcon: (loading) =>
+      loading ? <ActivityIndicator size="small" color="#4285F4" /> : <GoogleIcon />,
+  },
+  {
+    key: "apple",
+    strategy: "oauth_apple",
+    label: "Apple",
+    renderIcon: (loading) =>
+      loading ? (
+        <ActivityIndicator size="small" color="#000" />
+      ) : (
+        <Ionicons name="logo-apple" size={26} color="#000" />
+      ),
+  },
+  {
+    key: "github",
+    strategy: "oauth_github",
+    label: "GitHub",
+    renderIcon: (loading) =>
+      loading ? (
+        <ActivityIndicator size="small" color="#24292E" />
+      ) : (
+        <Ionicons name="logo-github" size={26} color="#24292E" />
+      ),
+  },
+  {
+    key: "x",
+    strategy: "oauth_x",
+    label: "X",
+    renderIcon: (loading) =>
+      loading ? (
+        <ActivityIndicator size="small" color="#000" />
+      ) : (
+        <Ionicons name="logo-x" size={24} color="#000" />
+      ),
+  },
 ];
 
-// Preloads the browser for Android devices to reduce auth load time
 function useWarmUpBrowser() {
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -62,7 +118,6 @@ export default function LoginScreen() {
 
   useWarmUpBrowser();
 
-  // If already signed in, move to the app
   useEffect(() => {
     if (isSignedIn) router.replace("/(tabs)");
   }, [isSignedIn]);
@@ -96,19 +151,13 @@ export default function LoginScreen() {
             session: createdSessionId,
             navigate: async ({ session, decorateUrl }) => {
               if (session?.currentTask) {
-                console.log(session?.currentTask);
                 return;
               }
               router.replace(decorateUrl("/") as any);
             },
           });
-        } else {
-          // If there is no createdSessionId, there are missing requirements
-          // such as MFA or additional fields
-          console.log("SSO missing requirements", { signIn, signUp });
         }
-      } catch (err) {
-        console.error("SSO error", err);
+      } catch {
       } finally {
         setLoading(null);
       }
@@ -117,61 +166,47 @@ export default function LoginScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: "#FFFFFF" }]}>
       <View
         style={[
           styles.content,
-          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 },
         ]}
       >
-        {/* Logo */}
-        <View style={styles.logoWrap}>
+        {/* Hero */}
+        <View style={styles.heroWrap}>
           <Image
             source={require("@/assets/images/logo_usa_blue.png")}
-            style={styles.logo}
+            style={styles.heroImg}
             resizeMode="contain"
           />
-          <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
-            Your Ultimate Final-Mile Guide
-          </Text>
+          <Text style={styles.tagline}>Your Ultimate Final-Mile Guide</Text>
         </View>
 
-        {/* Auth box */}
-        <View
-          style={[
-            styles.box,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
+        {/* Auth card */}
+        <View style={styles.card}>
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+            style={styles.loginBtn}
             onPress={goLogin}
             activeOpacity={0.85}
           >
-            <Text style={styles.primaryBtnText}>Login</Text>
+            <Text style={styles.loginBtnText}>Login</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.secondaryBtn,
-              { backgroundColor: colors.background, borderColor: colors.primary },
-            ]}
+            style={styles.signupBtn}
             onPress={goSignUp}
             activeOpacity={0.85}
           >
-            <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>Sign Up</Text>
+            <Text style={styles.signupBtnText}>Sign Up</Text>
           </TouchableOpacity>
 
-          {/* Divider */}
           <View style={styles.dividerRow}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>
-              or connect using
-            </Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or connect using</Text>
+            <View style={styles.dividerLine} />
           </View>
 
-          {/* Social row */}
           <View style={styles.socialRow}>
             {SOCIALS.map((s) => (
               <Pressable
@@ -181,91 +216,120 @@ export default function LoginScreen() {
                 style={({ pressed }) => [
                   styles.socialBtn,
                   {
-                    backgroundColor: colors.background,
-                    borderColor: colors.border,
-                    opacity: pressed || loading !== null ? 0.6 : 1,
+                    opacity: pressed || (loading !== null && loading !== s.strategy) ? 0.5 : 1,
                   },
                 ]}
                 accessibilityLabel={`Continue with ${s.label}`}
               >
-                {loading === s.strategy ? (
-                  <ActivityIndicator size="small" color={s.color} />
-                ) : (
-                  <Ionicons name={s.icon} size={24} color={s.color} />
-                )}
+                {s.renderIcon(loading === s.strategy)}
               </Pressable>
             ))}
           </View>
         </View>
 
         {/* Skip */}
-        <TouchableOpacity onPress={() => router.replace("/(tabs)")} hitSlop={10}>
-          <Text style={[styles.skip, { color: colors.mutedForeground }]}>
-            Skip for now
-          </Text>
+        <TouchableOpacity onPress={() => router.replace("/(tabs)")} hitSlop={12}>
+          <Text style={styles.skip}>Skip for now</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
+const PRIMARY = "#3D8DC4";
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   content: {
     flex: 1,
     paddingHorizontal: 28,
     justifyContent: "center",
-    gap: 36,
+    gap: 32,
+    alignItems: "stretch",
   },
-  logoWrap: { alignItems: "center", gap: 10 },
-  logo: { width: 280, height: 178 },
-  tagline: { fontSize: 15, fontFamily: "Inter_500Medium", textAlign: "center" },
-  box: {
-    borderRadius: 20,
+  heroWrap: { alignItems: "center", gap: 10 },
+  heroImg: { width: 300, height: 190 },
+  tagline: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    textAlign: "center",
+    color: "#7A8CA0",
+  },
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
     borderWidth: 1,
+    borderColor: "#E2E8EF",
     padding: 22,
     gap: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  primaryBtn: {
+  loginBtn: {
+    backgroundColor: PRIMARY,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  primaryBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  secondaryBtn: {
+  loginBtnText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  signupBtn: {
     borderRadius: 14,
     borderWidth: 1.5,
+    borderColor: PRIMARY,
     paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
-  secondaryBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  signupBtnText: {
+    color: PRIMARY,
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginTop: 4,
+    marginVertical: 2,
   },
-  dividerLine: { flex: 1, height: 1 },
-  dividerText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#E2E8EF" },
+  dividerText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#7A8CA0",
+  },
   socialRow: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 12,
-    marginTop: 2,
+    gap: 14,
   },
   socialBtn: {
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     borderRadius: 14,
     borderWidth: 1,
+    borderColor: "#E2E8EF",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   skip: {
     fontSize: 14,
     fontFamily: "Inter_500Medium",
     textAlign: "center",
+    color: "#7A8CA0",
   },
 });

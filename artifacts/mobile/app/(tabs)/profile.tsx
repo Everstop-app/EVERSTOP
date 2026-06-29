@@ -350,6 +350,17 @@ export default function ProfileScreen() {
       <View style={[styles.accountActions, { borderTopColor: colors.border }]}>
         <TouchableOpacity
           style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => {
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/report-content");
+          }}
+        >
+          <Ionicons name="flag-outline" size={20} color={colors.foreground} />
+          <Text style={[styles.accountBtnText, { color: colors.foreground }]}>Report Inappropriate Content</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => Linking.openURL("https://www.everstop.app/termsofservice")}
         >
           <Ionicons name="reader-outline" size={20} color={colors.foreground} />

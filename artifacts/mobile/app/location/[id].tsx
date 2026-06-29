@@ -407,6 +407,31 @@ export default function LocationDetail() {
                   {hasReported ? "Reported" : "Report Issue"}
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.communityBtn,
+                  { backgroundColor: colors.secondary, borderColor: colors.border },
+                ]}
+                onPress={() => {
+                  if (!user) { router.push("/auth"); return; }
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push({
+                    pathname: "/report-content",
+                    params: {
+                      locationId: location.id,
+                      locationName: location.companyName,
+                      type: "location",
+                    },
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="warning-outline" size={15} color="#D22F30" />
+                <Text style={[styles.communityBtnText, { color: "#D22F30" }]}>
+                  Inappropriate
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <Text style={[styles.communityNote, { color: colors.mutedForeground }]}>

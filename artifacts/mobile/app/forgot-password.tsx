@@ -15,12 +15,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ACCOUNTS_KEY = "everstop_accounts";
 
 export default function ForgotPasswordScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { forgotPassword } = useAuth();
   const WEB_TOP = Platform.OS === "web" ? 67 : 0;
 
   const [step, setStep] = useState<"email" | "reset" | "done">("email");
@@ -59,13 +61,8 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
-      const accounts = stored ? JSON.parse(stored) : {};
-      const key = email.trim().toLowerCase();
-      if (accounts[key]) {
-        accounts[key] = { ...accounts[key], _password: newPassword };
-        await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-      }
+      const ok = await forgotPassword(email.trim().toLowerCase(), newPassword);
+      if (!ok) { setError("Could not update password. Please try again."); return; }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setStep("done");
     } finally {

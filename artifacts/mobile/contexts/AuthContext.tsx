@@ -1,6 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useUser, useClerk } from "@clerk/expo";
+import * as Crypto from "expo-crypto";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+
+async function hashPassword(password: string): Promise<string> {
+  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, password);
+}
 
 export type AccountType = "driver" | "customer";
 export type SubscriptionTier = "free" | "premium" | "business";
@@ -183,7 +188,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const accounts = JSON.parse(stored) as Record<string, any>;
       const account = accounts[email.toLowerCase()];
       if (!account) return false;
-      if (account._password && account._password !== password) return false;
+      if (account._passwordHash) {
+        const hash = await hashPassword(password);
+        if (hash !== account._passwordHash) return false;
+      }
       await saveUser(migrateUser(account));
       return true;
     },
@@ -200,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
       const accounts = stored ? (JSON.parse(stored) as Record<string, any>) : {};
       if (accounts[email.toLowerCase()]) return false;
+      const _passwordHash = await hashPassword(password);
       const newUser = {
         ...makeDefaultUser({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -207,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email,
           accountType,
         }),
-        _password: password,
+        _passwordHash,
       };
       accounts[email.toLowerCase()] = newUser;
       await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
@@ -251,7 +260,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const accounts = JSON.parse(stored);
     const key = email.trim().toLowerCase();
     if (!accounts[key]) return false;
-    accounts[key] = { ...accounts[key], _password: newPassword };
+    const _passwordHash = await hashPassword(newPassword);
+    accounts[key] = { ...accounts[key], _passwordHash, _password: undefined };
     await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
     return true;
   }, []);

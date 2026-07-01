@@ -2,7 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useLocations, AccessPointType } from "@/contexts/LocationsContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchLocationHazards, type Hazard, type HazardType } from "@/utils/routeHazards";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PHOTO_GRID_SIZE = (SCREEN_WIDTH - 32 - 28) / 3;
@@ -53,6 +54,8 @@ export default function LocationDetail() {
 
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [hasReported, setHasReported] = useState(false);
+  const [nearbyHazards, setNearbyHazards] = useState<Hazard[]>([]);
+  const [loadingHazards, setLoadingHazards] = useState(false);
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [commentRating, setCommentRating] = useState(5);
@@ -63,6 +66,16 @@ export default function LocationDetail() {
 
   const location = getLocation(id ?? "");
   const isFav = user?.favoriteLocations.includes(id ?? "") ?? false;
+
+  useEffect(() => {
+    if (!location) return;
+    let cancelled = false;
+    setLoadingHazards(true);
+    fetchLocationHazards(location.latitude, location.longitude).then((h) => {
+      if (!cancelled) { setNearbyHazards(h); setLoadingHazards(false); }
+    });
+    return () => { cancelled = true; };
+  }, [location?.id]);
 
   if (!location) {
     return (
@@ -473,6 +486,69 @@ export default function LocationDetail() {
                   </View>
                 );
               })}
+            </View>
+          )}
+
+          {/* Nearby Hazards */}
+          {(loadingHazards || nearbyHazards.length > 0) && (
+            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.hazardHeader}>
+                <Ionicons name="warning-outline" size={17} color="#F59E0B" />
+                <Text style={[styles.cardTitle, { color: colors.foreground, marginBottom: 0 }]}>Nearby Hazards</Text>
+                {loadingHazards && (
+                  <Text style={[styles.hazardScanLabel, { color: colors.mutedForeground }]}>scanning…</Text>
+                )}
+              </View>
+              {loadingHazards ? (
+                <Text style={[styles.hazardEmptyText, { color: colors.mutedForeground }]}>
+                  Scanning for low bridges, weigh stations, and more…
+                </Text>
+              ) : (
+                <>
+                  {(["bridge", "weighstation", "catscale", "railroad"] as HazardType[]).map((type) => {
+                    const items = nearbyHazards.filter((h) => h.type === type);
+                    if (items.length === 0) return null;
+                    const CFG: Record<HazardType, { color: string; symbol: string; label: string }> = {
+                      bridge:       { color: "#F59E0B", symbol: "⚠", label: "Low Clearance" },
+                      weighstation: { color: "#1E3A8A", symbol: "W", label: "Weigh Station" },
+                      catscale:     { color: "#0E7490", symbol: "C", label: "CAT Scale" },
+                      railroad:     { color: "#7C3AED", symbol: "R", label: "RR Hump Crossing" },
+                    };
+                    const { color, symbol, label } = CFG[type];
+                    return (
+                      <View key={type} style={[styles.hazardGroup, { borderColor: color + "33", backgroundColor: color + "0A" }]}>
+                        <View style={styles.hazardGroupHeader}>
+                          <View style={[styles.hazardSymbolBadge, { backgroundColor: color }]}>
+                            <Text style={styles.hazardSymbolText}>{symbol}</Text>
+                          </View>
+                          <Text style={[styles.hazardGroupLabel, { color: colors.foreground }]}>
+                            {items.length} {label}{items.length > 1 ? "s" : ""} nearby
+                          </Text>
+                        </View>
+                        {items.slice(0, 3).map((h) => (
+                          <View key={h.id} style={styles.hazardItem}>
+                            <Ionicons name="location-outline" size={13} color={color} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.hazardItemLabel, { color: colors.foreground }]}>{h.label}</Text>
+                              {h.detail ? (
+                                <Text style={[styles.hazardItemDetail, { color: color }]}>{h.detail}</Text>
+                              ) : null}
+                            </View>
+                          </View>
+                        ))}
+                        {items.length > 3 && (
+                          <Text style={[styles.hazardMoreText, { color: colors.mutedForeground }]}>
+                            +{items.length - 3} more
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                  <Text style={[styles.hazardFootnote, { color: colors.mutedForeground }]}>
+                    Within ~5 mi of this location · Source: OpenStreetMap
+                  </Text>
+                </>
+              )}
             </View>
           )}
 
@@ -1247,4 +1323,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
+  hazardHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
+  hazardScanLabel: { fontSize: 12, fontFamily: "Inter_400Regular", marginLeft: 2 },
+  hazardEmptyText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  hazardGroup: { borderRadius: 10, borderWidth: 1, padding: 10, marginBottom: 8, gap: 6 },
+  hazardGroupHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  hazardSymbolBadge: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  hazardSymbolText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  hazardGroupLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1 },
+  hazardItem: { flexDirection: "row", alignItems: "flex-start", gap: 6, paddingLeft: 4 },
+  hazardItemLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  hazardItemDetail: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  hazardMoreText: { fontSize: 11, fontFamily: "Inter_400Regular", paddingLeft: 4 },
+  hazardFootnote: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2, textAlign: "right" },
 });

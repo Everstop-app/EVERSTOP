@@ -25,6 +25,14 @@ function parseHeightMeters(raw: string): number | null {
 
 const LIMIT_M = 4.115; // 13'6" in meters
 
+export async function fetchLocationHazards(lat: number, lng: number, radiusDeg = 0.07): Promise<Hazard[]> {
+  const fakeLine: [number, number][] = [
+    [lng - radiusDeg, lat - radiusDeg],
+    [lng + radiusDeg, lat + radiusDeg],
+  ];
+  return fetchRouteHazards(fakeLine);
+}
+
 export async function fetchRouteHazards(coords: [number, number][]): Promise<Hazard[]> {
   if (coords.length < 2) return [];
 

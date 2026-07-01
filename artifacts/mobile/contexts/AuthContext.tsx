@@ -43,7 +43,6 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, accountType: AccountType) => Promise<boolean>;
   logout: () => void;
   deleteAccount: () => Promise<void>;
-  forgotPassword: (email: string, newPassword: string) => Promise<boolean>;
   addPoints: (points: number) => void;
   toggleFavorite: (locationId: string) => void;
   upgradeToPremium: () => void;
@@ -254,17 +253,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(USER_STORAGE_KEY);
   }, [user, clerkUser, signOut]);
 
-  const forgotPassword = useCallback(async (email: string, newPassword: string): Promise<boolean> => {
-    const stored = await AsyncStorage.getItem(ACCOUNTS_KEY);
-    if (!stored) return false;
-    const accounts = JSON.parse(stored);
-    const key = email.trim().toLowerCase();
-    if (!accounts[key]) return false;
-    const _passwordHash = await hashPassword(newPassword);
-    accounts[key] = { ...accounts[key], _passwordHash, _password: undefined };
-    await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-    return true;
-  }, []);
 
   const addPoints = useCallback(
     (pts: number) => {
@@ -350,7 +338,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         deleteAccount,
-        forgotPassword,
         addPoints,
         toggleFavorite,
         upgradeToPremium,

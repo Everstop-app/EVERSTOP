@@ -112,6 +112,13 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <Text style={[styles.privacyLink, { color: colors.mutedForeground }]}>·</Text>
             <TouchableOpacity
+              onPress={() => Linking.openURL("https://www.everstop.app/communityguidelines")}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
+              <Text style={[styles.privacyLink, { color: colors.primary }]}>Community Guidelines</Text>
+            </TouchableOpacity>
+            <Text style={[styles.privacyLink, { color: colors.mutedForeground }]}>·</Text>
+            <TouchableOpacity
               onPress={() => router.push("/dmca")}
               hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
             >
@@ -439,6 +446,14 @@ export default function ProfileScreen() {
         >
           <Ionicons name="ellipsis-horizontal-circle-outline" size={20} color={colors.foreground} />
           <Text style={[styles.accountBtnText, { color: colors.foreground }]}>Cookie Policy</Text>
+          <Ionicons name="open-outline" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.accountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => Linking.openURL("https://www.everstop.app/communityguidelines")}
+        >
+          <Ionicons name="people-circle-outline" size={20} color={colors.foreground} />
+          <Text style={[styles.accountBtnText, { color: colors.foreground }]}>Community Guidelines</Text>
           <Ionicons name="open-outline" size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
         <TouchableOpacity

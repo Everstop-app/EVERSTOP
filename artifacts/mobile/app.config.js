@@ -65,7 +65,7 @@ const config = {
   },
   extra: {
     eas: {
-      projectId: "YOUR_EAS_PROJECT_ID",
+      projectId: "a97a6f29-d614-4098-b822-7c003ea080b1",
     },
   },
 };

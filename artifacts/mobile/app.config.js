@@ -16,6 +16,12 @@ const config = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: "com.everstop.app",
+    infoPlist: {
+      NSLocationWhenInUseUsageDescription:
+        "EverStop uses your location to show nearby delivery stops and calculate routes.",
+      NSLocationAlwaysAndWhenInUseUsageDescription:
+        "EverStop uses your location to show nearby delivery stops and calculate routes.",
+    },
   },
   android: {
     package: "com.everstop.app",
@@ -23,6 +29,15 @@ const config = {
       foregroundImage: "./assets/images/icon.png",
       backgroundColor: "#2080DF",
     },
+    config: {
+      googleMaps: {
+        apiKey: process.env.GOOGLE_MAPS_API_KEY,
+      },
+    },
+    permissions: [
+      "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.ACCESS_COARSE_LOCATION",
+    ],
   },
   web: {
     favicon: "./assets/images/icon.png",
@@ -36,6 +51,13 @@ const config = {
     ],
     "expo-font",
     "expo-web-browser",
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission:
+          "EverStop uses your location to show nearby delivery stops and calculate routes.",
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

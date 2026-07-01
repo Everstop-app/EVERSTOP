@@ -21,6 +21,9 @@
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "$MAPBOX_ACCESS_TOKEN"
       }
     }
   },

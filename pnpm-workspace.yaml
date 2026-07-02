@@ -62,7 +62,7 @@ catalog:
   tailwind-merge: ^3.3.1
   tailwindcss: ^4.1.14
   tsx: ^4.21.0
-  vite: ^7.3.2
+  vite: ^7.3.5
   wouter: ^3.3.5
   zod: ^3.25.76
 
@@ -168,3 +168,18 @@ overrides:
   # Security: fix CVE GHSA-q8mj-m7cp-5q26 (qs DoS via qs.stringify with null entries)
   # Pulled in by express (body-parser and express itself)
   qs: ">=6.15.2"
+  # Security: fix GHSA-35p6-xmwp-9g52 / GHSA-g8m3-5g58-fq7m / GHSA-p88m-4jfj-68fv / GHSA-vxpw-j846-p89q (undici DoS/poisoning)
+  # Pulled in by @expo/cli
+  undici: ">=6.27.0"
+  # Security: fix GHSA-96hv-2xvq-fx4p (ws Memory exhaustion DoS)
+  # Pulled in by @clerk/clerk-js via viem
+  ws: ">=8.21.0"
+  # Security: fix GHSA-6v5v-wf23-fmfq (markdown-it quadratic complexity DoS)
+  # Pulled in by orval>typedoc
+  markdown-it: ">=14.2.0"
+  # Security: fix GHSA-22p9-wv53-3rq4 (linkify-it quadratic complexity DoS)
+  # Pulled in by orval>typedoc>markdown-it
+  linkify-it: ">=5.0.1"
+  # Security: fix GHSA-h67p-54hq-rp68 (js-yaml quadratic DoS in merge key handling)
+  # Global override to >=4.2.0 covers all consumers (xcpretty, orval, load-nyc-config, etc.)
+  js-yaml: ">=4.2.0"

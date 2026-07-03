@@ -1,0 +1,66 @@
+Short answer — the biggest performance risks are full-body text decoding + JSON.parse on the main thread, unbounded waits (no timeout / cancellation), and unnecessary body decoding for non-text/binary responses. These show up in lib/api-client-react/src/custom-fetch.ts (functions like parseJsonBody / parseSuccessBody / parseErrorBody / customFetch) and are the places I'd fix first.
+
+Details, why they matter, and concrete fixes
+
+Reading the entire response as text then JSON.parse (main-thread CPU + memory)
+Where: parseJsonBody / parseSuccessBody / parseErrorBody in lib/api-client-react/src/custom-fetch.ts — these call await response.text() and then JSON.parse(text).
+Problem: response.text() materializes the entire response string into memory; JSON.parse then parses it synchronously on the JS main thread. For large responses this spikes memory and blocks the main thread (bad UX).
+Impact: high CPU spikes, jank in browsers, OOM when payloads are large.
+Fixes:
+Use response.json() when you expect JSON — it lets the runtime do optimized parsing and avoids an extra string copy.
+For very large JSON, consider streaming or incremental parsing or offloading JSON.parse to a Web Worker.
+Always check content-length (or a configured size limit) and bail / stream if the body is larger than a safe threshold.
+Unnecessary decoding for non-text / binary responses
+Where: same parse* functions; code frequently calls response.text() before deciding how to treat the body.
+Problem: binary or blob responses (images, zip, protobuf) should not be read as text; doing so wastes CPU and produces garbage results.
+Impact: wasted CPU and memory, wrong behavior for binary payloads.
+Fixes:
+Inspect headers (Content-Type) first. If content-type indicates non-text (image/*, application/octet-stream, etc.) use response.blob() or response.arrayBuffer() instead of text().
+Only call response.text() / response.json() after you know it’s expected and safe.
+Body consumption duplication / ordering problems
+Where: parseErrorBody and parseSuccessBody both call response.text(); calling one after the other will fail because body is a consumed stream.
+Problem: attempting to read the body multiple times will throw or return empty result. The code currently calls response.text() in several places which can lead to subtle bugs/extra work if control flow changes.
+Fixes:
+Ensure body is read exactly once per response; centralize parsing logic so you decide once how to parse and return it.
+If you need multiple views of the body, clone the Response (response.clone()) and parse clones appropriately — but be mindful that cloning doubles memory usage.
+No request timeout / cancellation support
+Where: customFetch wraps fetch(...) but does not accept or use an AbortController or timeout.
+Problem: slow / stuck requests will hang the client; no way for callers to cancel or time out.
+Impact: resource leakage, poor UX, requests piling up.
+Fixes:
+Accept an optional AbortSignal / AbortController or timeout option and pass it to fetch.
+Implement a configurable timeout (wrap fetch in a timeout Promise that aborts via AbortController).
+Awaiting an auth token per request without caching
+Where: customFetch optionally awaits _authTokenGetter per request when configured.
+Problem: if the token getter does I/O (disk, network, crypto) and is invoked for every request, it becomes a per-request latency and CPU cost.
+Impact: increased latency and load when making many small requests (e.g., in list rendering or polling).
+Fixes:
+Cache tokens until expiry, or let the token getter return a cached value and only refresh as needed.
+Make the token getter fast (in-memory) or perform async refresh in background rather than blocking every request.
+Synchronous JSON.parse in exception paths / try-catch heavy usage
+Where: buildErrorMessage / parseErrorBody use JSON.parse inside try/catch fallbacks.
+Problem: repeated exceptions (parsing failures) are expensive; throwing and catching in V8 is slow if it happens often (e.g., many non-JSON error responses).
+Impact: CPU overhead under error conditions.
+Fixes:
+Avoid relying on exceptions for flow control. Test content-type and/or first char heuristics before parsing. Parse only when you have a strong indication the body is JSON.
+Potential small inefficiencies that add up at scale
+Per-request header merging and regex base-url manipulation (setBaseUrl/applyBaseUrl) are small but in very hot loops can add overhead.
+Minor optimizations:
+Precompute and reuse static Headers or base URLs where possible.
+Avoid constructing new Headers for every small request if the header set is identical (reuse an immutable base headers object and overlay per-request changes).
+Lack of streaming support for very large responses
+Where: overall parsing strategy (text/json) assumes whole-body reads.
+Problem: very large payloads will blow memory and block the main thread.
+Fixes:
+If your API returns large lists/files, add streaming parsers (text/event-stream, NDJSON reader, or use Response.body.getReader()) or fetch as stream and process incrementally.
+Prioritization (what to fix first)
+
+Add timeout/AbortController support (low effort, big UX win).
+Replace await response.text() + JSON.parse with response.json() where appropriate. Centralize parsing so body is read once.
+Add content-type checks to choose text/json/blob/arrayBuffer and avoid decoding binary as text.
+Cache auth tokens or make token access non-blocking.
+Consider worker-based JSON parsing or streaming for very large payloads.
+If you want, I can:
+
+produce a patch for lib/api-client-react/src/custom-fetch.ts implementing: a) AbortController/timeout support, b) centralized parsing using response.json()/response.blob(), and c) a size guard (max bytes) with early abort; or
+point to the exact lines to change and provide code snippets for each recommended fix.

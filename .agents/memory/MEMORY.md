@@ -1,1 +1,2 @@
 - [Mapbox tile setup](mapbox-tiles.md) — Mapbox via raster UrlTile (Expo Go compatible); mapbox-gl WebGL fails in Replit iframe.
+- [pnpm Babel phantom deps](pnpm-babel-phantom-deps.md) — bumping @babel/core in Expo apps can crash Metro on a phantom `@babel/generator` require; add it as an explicit devDependency.

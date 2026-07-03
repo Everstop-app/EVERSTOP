@@ -1,6 +1,58 @@
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
+  /**
+   * Abort the request if it hasn't completed within this many milliseconds.
+   * When it fires, the returned promise rejects with a `TimeoutError`
+   * (`error.name === "TimeoutError"`). Ignored if `options.signal` is
+   * already aborted before the request starts.
+   */
+  timeoutMs?: number;
 };
+
+export class TimeoutError extends Error {
+  readonly name = "TimeoutError";
+
+  constructor(requestInfo: { method: string; url: string }, timeoutMs: number) {
+    super(`${requestInfo.method} ${requestInfo.url} timed out after ${timeoutMs}ms`);
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+// Combine a caller-provided signal (if any) with an internal timeout signal,
+// so aborting either one aborts the fetch. Avoids relying on AbortSignal.any,
+// which isn't available in all runtimes we target (older RN/Hermes).
+function combineSignals(
+  external: AbortSignal | undefined,
+  timeoutMs: number | undefined,
+  requestInfo: { method: string; url: string },
+): { signal: AbortSignal | undefined; cleanup: () => void; timedOut: () => boolean } {
+  if (timeoutMs == null) {
+    return { signal: external, cleanup: () => {}, timedOut: () => false };
+  }
+
+  const controller = new AbortController();
+  let didTimeOut = false;
+
+  const timer = setTimeout(() => {
+    didTimeOut = true;
+    controller.abort(new TimeoutError(requestInfo, timeoutMs));
+  }, timeoutMs);
+
+  const onExternalAbort = () => controller.abort(external?.reason);
+  if (external) {
+    if (external.aborted) controller.abort(external.reason);
+    else external.addEventListener("abort", onExternalAbort);
+  }
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timer);
+      external?.removeEventListener("abort", onExternalAbort);
+    },
+    timedOut: () => didTimeOut,
+  };
+}
 
 export type ErrorType<T = unknown> = ApiError<T>;
 
@@ -327,7 +379,7 @@ export async function customFetch<T = unknown>(
   options: CustomFetchOptions = {},
 ): Promise<T> {
   input = applyBaseUrl(input);
-  const { responseType = "auto", headers: headersInit, ...init } = options;
+  const { responseType = "auto", headers: headersInit, timeoutMs, ...init } = options;
 
   const method = resolveMethod(input, init.method);
 
@@ -360,7 +412,19 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const { signal, cleanup, timedOut } = combineSignals(init.signal ?? undefined, timeoutMs, requestInfo);
+
+  let response: Response;
+  try {
+    response = await fetch(input, { ...init, method, headers, signal });
+  } catch (cause) {
+    if (timedOut()) {
+      throw new TimeoutError(requestInfo, timeoutMs as number);
+    }
+    throw cause;
+  } finally {
+    cleanup();
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

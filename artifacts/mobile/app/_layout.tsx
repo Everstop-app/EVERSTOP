@@ -6,7 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { ClerkProvider, ClerkLoaded } from "@clerk/expo";
+import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
@@ -15,6 +15,7 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -26,6 +27,29 @@ const queryClient = new QueryClient();
 
 const clerkPubKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const clerkProxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
+
+// Native runtime has no page origin to resolve relative "/api/..." URLs
+// against, so point the generated API client at the same domain the app
+// was loaded from (the shared reverse proxy routes "/api" there too).
+// Web already resolves relative URLs against window.location, but setting
+// this explicitly keeps both platforms consistent.
+if (process.env.EXPO_PUBLIC_DOMAIN) {
+  setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+}
+
+function ApiAuthBridge() {
+  const { getToken, isSignedIn } = useAuth();
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      setAuthTokenGetter(null);
+      return;
+    }
+    setAuthTokenGetter(() => getToken());
+  }, [isSignedIn, getToken]);
+
+  return null;
+}
 
 function RootLayoutNav() {
   return (
@@ -72,6 +96,7 @@ export default function RootLayout() {
             <QueryClientProvider client={queryClient}>
               <GestureHandlerRootView style={{ flex: 1 }}>
                 <KeyboardProvider>
+                  <ApiAuthBridge />
                   <AuthProvider>
                     <LocationsProvider>
                       <RootLayoutNav />

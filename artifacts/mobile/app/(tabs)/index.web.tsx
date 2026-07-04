@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import {
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,12 +15,18 @@ import mapboxgl from "mapbox-gl";
 import { MapContainer, TileLayer, Marker, Popup, Polyline as LeafletPolyline } from "react-leaflet";
 import L from "leaflet";
 import type { Map as LeafletMapInstance, LeafletMouseEvent } from "leaflet";
+import { useQueryClient } from "@tanstack/react-query";
+import { useListWeighStationStatuses, useSetWeighStationStatus, getListWeighStationStatusesQueryKey } from "@workspace/api-client-react";
+
 import { useColors } from "@/hooks/useColors";
 import { useLocations } from "@/contexts/LocationsContext";
 import { SearchBar } from "@/components/SearchBar";
 import type { Location } from "@/components/MapLayer";
-import { fetchRoute, type RouteData } from "@/utils/mapboxRouting";
+import { fetchRoutes, type RouteData } from "@/utils/mapboxRouting";
 import { fetchRouteHazards, type Hazard, type HazardType } from "@/utils/routeHazards";
+import { startNativeNavigation, type NavStop } from "@/utils/nativeNavigation";
+import { fetchWeighStationsAlongRoute, type WeighStation } from "@/utils/weighStations";
+import { fetchPoisAlongRoute, POI_CATEGORIES, type Poi, type PoiCategory } from "@/utils/poiSearch";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -60,8 +67,6 @@ function escapeHtml(str: string): string {
 
 const HAZARD_WEB_CFG: Record<HazardType, { bg: string; symbol: string; label: string }> = {
   bridge:       { bg: "#F59E0B", symbol: "⚠", label: "Low Clearance" },
-  weighstation: { bg: "#1E3A8A", symbol: "W",  label: "Weigh Station" },
-  catscale:     { bg: "#0E7490", symbol: "C",  label: "CAT Scale" },
   railroad:     { bg: "#7C3AED", symbol: "R",  label: "Railroad Hump" },
 };
 
@@ -81,6 +86,22 @@ function makePinEl(color: string, size = 14): HTMLElement {
   return el;
 }
 
+function makeWeighEl(status: "open" | "closed" | undefined): HTMLElement {
+  const bg = status === "open" ? "#22C55E" : status === "closed" ? "#EF4444" : "#7A8CA0";
+  const el = document.createElement("div");
+  el.innerHTML = `<div style="width:26px;height:26px;background:${bg};border:2.5px solid #fff;border-radius:6px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.45);font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:sans-serif">W</div>`;
+  el.style.display = "block";
+  return el;
+}
+
+function makePoiEl(): HTMLElement {
+  const el = document.createElement("div");
+  el.innerHTML = `<svg width="20" height="28" viewBox="0 0 14 20" xmlns="http://www.w3.org/2000/svg"><path d="M7 0C3.134 0 0 3.134 0 7c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z" fill="#3D8DC4"/><circle cx="7" cy="7" r="2.5" fill="#fff"/></svg>`;
+  el.style.cursor = "pointer";
+  el.style.display = "block";
+  return el;
+}
+
 function makeDroppedPinEl(): HTMLElement {
   const el = document.createElement("div");
   el.innerHTML = `<svg width="24" height="34" viewBox="0 0 24 34" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 22 12 22s12-13 12-22C24 5.373 18.627 0 12 0z" fill="#EF4444"/><circle cx="12" cy="12" r="4.5" fill="#fff"/></svg>`;
@@ -92,6 +113,12 @@ type MapView = "default" | "satellite";
 
 // ─── Full Mapbox GL JS map (WebGL path) ─────────────────────────────────────
 
+export type MapHandle = {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  flyTo: (lat: number, lng: number, zoom?: number) => void;
+};
+
 type MapboxMapProps = {
   locations: Location[];
   isDark: boolean;
@@ -100,13 +127,18 @@ type MapboxMapProps = {
   droppedPin: { lat: number; lng: number } | null;
   routeData: RouteData | null;
   hazards: Hazard[];
+  weighStations: WeighStation[];
+  weighStationStatus: Record<string, "open" | "closed" | undefined>;
+  pois: Poi[];
   onMapClick: (lat: number, lng: number) => void;
   onLocationNav: (id: string) => void;
   onDirections: (id: string, lat: number, lng: number) => void;
+  onWeighStationToggle: (id: string, current: "open" | "closed" | undefined) => void;
+  onPoiAdd: (id: string) => void;
   onFallback: () => void;
 };
 
-function MapboxMap({
+const MapboxMap = forwardRef<MapHandle, MapboxMapProps>(function MapboxMap({
   locations,
   isDark,
   mapView,
@@ -114,15 +146,22 @@ function MapboxMap({
   droppedPin,
   routeData,
   hazards,
+  weighStations,
+  weighStationStatus,
+  pois,
   onMapClick,
   onLocationNav,
   onDirections,
+  onWeighStationToggle,
+  onPoiAdd,
   onFallback,
-}: MapboxMapProps) {
+}: MapboxMapProps, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const hazardMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const weighMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const poiMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const droppedMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const droppingRef = useRef(droppingPin);
   droppingRef.current = droppingPin;
@@ -132,6 +171,12 @@ function MapboxMap({
   onDirectionsRef.current = onDirections;
   const onLocationNavRef = useRef(onLocationNav);
   onLocationNavRef.current = onLocationNav;
+  const onWeighStationToggleRef = useRef(onWeighStationToggle);
+  onWeighStationToggleRef.current = onWeighStationToggle;
+  const onPoiAddRef = useRef(onPoiAdd);
+  onPoiAddRef.current = onPoiAdd;
+  const weighStationStatusRef = useRef(weighStationStatus);
+  weighStationStatusRef.current = weighStationStatus;
 
   const styleUrl = mapView === "satellite" ? STYLE_SATELLITE : isDark ? STYLE_DARK : STYLE_LIGHT;
 
@@ -147,9 +192,14 @@ function MapboxMap({
     (window as any).__everstopNav = (id: string) => onLocationNavRef.current(id);
     (window as any).__everstopDirections = (id: string, lat: number, lng: number) =>
       onDirectionsRef.current(id, lat, lng);
+    (window as any).__everstopWeighToggle = (id: string) =>
+      onWeighStationToggleRef.current(id, weighStationStatusRef.current[id]);
+    (window as any).__everstopPoiAdd = (id: string) => onPoiAddRef.current(id);
     return () => {
       delete (window as any).__everstopNav;
       delete (window as any).__everstopDirections;
+      delete (window as any).__everstopWeighToggle;
+      delete (window as any).__everstopPoiAdd;
     };
   }, []);
 
@@ -216,6 +266,12 @@ function MapboxMap({
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    zoomIn: () => mapRef.current?.zoomIn({ duration: 250 }),
+    zoomOut: () => mapRef.current?.zoomOut({ duration: 250 }),
+    flyTo: (lat, lng, zoom = 12) => mapRef.current?.flyTo({ center: [lng, lat], zoom, duration: 600 }),
+  }), []);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -342,8 +398,82 @@ function MapboxMap({
     }
   }, [hazards]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    weighMarkersRef.current.forEach((m) => m.remove());
+    weighMarkersRef.current = [];
+
+    const addWeighMarkers = () => {
+      weighStations.forEach((w) => {
+        const status = weighStationStatus[w.id];
+        const el = makeWeighEl(status);
+        const safeId = escapeHtml(w.id);
+        const statusLabel = status === "open" ? "Open" : status === "closed" ? "Closed" : "Status unknown";
+        const statusColor = status === "open" ? "#22C55E" : status === "closed" ? "#EF4444" : "#7A8CA0";
+        const popup = new mapboxgl.Popup({ offset: 16, closeButton: false, maxWidth: "210px" })
+          .setHTML(`
+            <div style="font-family:sans-serif;padding:4px 0">
+              <div style="font-weight:700;font-size:13px;margin-bottom:2px">${escapeHtml(w.label)}</div>
+              <div style="font-size:12px;margin-bottom:8px;color:${statusColor};font-weight:600">${statusLabel}</div>
+              <button
+                onclick="window.__everstopWeighToggle('${safeId}')"
+                style="width:100%;background:#3D8DC4;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer"
+              >Mark ${status === "open" ? "Closed" : "Open"}</button>
+            </div>
+          `);
+        const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat([w.lng, w.lat])
+          .setPopup(popup)
+          .addTo(map);
+        weighMarkersRef.current.push(marker);
+      });
+    };
+
+    if (map.isStyleLoaded()) {
+      addWeighMarkers();
+    } else {
+      map.once("styledata", addWeighMarkers);
+    }
+  }, [weighStations, weighStationStatus]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    poiMarkersRef.current.forEach((m) => m.remove());
+    poiMarkersRef.current = [];
+
+    const addPoiMarkers = () => {
+      pois.forEach((p) => {
+        const el = makePoiEl();
+        const safeId = escapeHtml(p.id);
+        const popup = new mapboxgl.Popup({ offset: 14, closeButton: false, maxWidth: "200px" })
+          .setHTML(`
+            <div style="font-family:sans-serif;padding:4px 0">
+              <div style="font-weight:700;font-size:13px;margin-bottom:8px">${escapeHtml(p.label)}</div>
+              <button
+                onclick="window.__everstopPoiAdd('${safeId}')"
+                style="width:100%;background:#3D8DC4;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer"
+              >Add as Stop</button>
+            </div>
+          `);
+        const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+          .setLngLat([p.lng, p.lat])
+          .setPopup(popup)
+          .addTo(map);
+        poiMarkersRef.current.push(marker);
+      });
+    };
+
+    if (map.isStyleLoaded()) {
+      addPoiMarkers();
+    } else {
+      map.once("styledata", addPoiMarkers);
+    }
+  }, [pois]);
+
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
-}
+});
 
 // ─── Leaflet fallback (no WebGL) ─────────────────────────────────────────────
 
@@ -355,12 +485,17 @@ type LeafletMapProps = {
   droppedPin: { lat: number; lng: number } | null;
   routeData: RouteData | null;
   hazards: Hazard[];
+  weighStations: WeighStation[];
+  weighStationStatus: Record<string, "open" | "closed" | undefined>;
+  pois: Poi[];
   onMapClick: (lat: number, lng: number) => void;
   onLocationNav: (id: string) => void;
   onDirections: (id: string, lat: number, lng: number) => void;
+  onWeighStationToggle: (id: string, current: "open" | "closed" | undefined) => void;
+  onPoiAdd: (id: string) => void;
 };
 
-function LeafletMap({
+const LeafletMap = forwardRef<MapHandle, LeafletMapProps>(function LeafletMap({
   locations,
   isDark,
   mapView,
@@ -368,11 +503,22 @@ function LeafletMap({
   droppedPin,
   routeData,
   hazards,
+  weighStations,
+  weighStationStatus,
+  pois,
   onMapClick,
   onLocationNav,
   onDirections,
-}: LeafletMapProps) {
+  onWeighStationToggle,
+  onPoiAdd,
+}: LeafletMapProps, ref) {
   const mapRef = useRef<LeafletMapInstance | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    zoomIn: () => mapRef.current?.zoomIn(),
+    zoomOut: () => mapRef.current?.zoomOut(),
+    flyTo: (lat, lng, zoom = 12) => mapRef.current?.flyTo([lat, lng], zoom, { duration: 0.6 }),
+  }), []);
 
   const tileUrl = mapView === "satellite"
     ? MAPBOX_RASTER_SATELLITE
@@ -446,6 +592,57 @@ function LeafletMap({
           </Marker>
         );
       })}
+      {weighStations.map((w) => {
+        const status = weighStationStatus[w.id];
+        const bg = status === "open" ? "#22C55E" : status === "closed" ? "#EF4444" : "#7A8CA0";
+        return (
+          <Marker
+            key={`w-${w.id}`}
+            position={[w.lat, w.lng]}
+            icon={L.divIcon({
+              html: `<div style="width:26px;height:26px;background:${bg};border:2.5px solid #fff;border-radius:6px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.45);font-size:12px;font-weight:800;color:#fff;font-family:sans-serif">W</div>`,
+              className: "", iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -13],
+            })}
+          >
+            <Popup>
+              <div style={{ fontFamily: "sans-serif", minWidth: 150 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{w.label}</div>
+                <div style={{ fontSize: 12, marginBottom: 8, color: bg, fontWeight: 600 }}>
+                  {status === "open" ? "Open" : status === "closed" ? "Closed" : "Status unknown"}
+                </div>
+                <button
+                  onClick={() => onWeighStationToggle(w.id, status)}
+                  style={{ width: "100%", background: "#3D8DC4", color: "#fff", border: "none", borderRadius: 8, padding: "7px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Mark {status === "open" ? "Closed" : "Open"}
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+      {pois.map((p) => (
+        <Marker
+          key={`p-${p.id}`}
+          position={[p.lat, p.lng]}
+          icon={L.divIcon({
+            html: `<svg width="20" height="28" viewBox="0 0 14 20" xmlns="http://www.w3.org/2000/svg"><path d="M7 0C3.134 0 0 3.134 0 7c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z" fill="#3D8DC4"/><circle cx="7" cy="7" r="2.5" fill="#fff"/></svg>`,
+            className: "", iconSize: [20, 28], iconAnchor: [10, 28], popupAnchor: [0, -28],
+          })}
+        >
+          <Popup>
+            <div style={{ fontFamily: "sans-serif", minWidth: 140 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{p.label}</div>
+              <button
+                onClick={() => onPoiAdd(p.id)}
+                style={{ width: "100%", background: "#3D8DC4", color: "#fff", border: "none", borderRadius: 8, padding: "7px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                Add as Stop
+              </button>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
       {locations.map((loc) => {
         const color = getPinColor(loc);
         const icon = L.divIcon({
@@ -483,7 +680,7 @@ function LeafletMap({
       })}
     </MapContainer>
   );
-}
+});
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
@@ -503,11 +700,34 @@ export default function MapScreen() {
     try { return mapboxgl.supported(); } catch { return false; }
   });
 
-  const [routeData, setRouteData] = useState<RouteData | null>(null);
+  const [routeOptions, setRouteOptions] = useState<RouteData[]>([]);
+  const [routeHazardsByRoute, setRouteHazardsByRoute] = useState<Hazard[][]>([]);
+  const [selectedRouteIdx, setSelectedRouteIdx] = useState(0);
   const [routeDestName, setRouteDestName] = useState<string | null>(null);
+  const [routeDestCoord, setRouteDestCoord] = useState<{ lat: number; lng: number } | null>(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
-  const [hazards, setHazards] = useState<Hazard[]>([]);
   const [loadingHazards, setLoadingHazards] = useState(false);
+  const [locatingMe, setLocatingMe] = useState(false);
+
+  const [weighStationsByRoute, setWeighStationsByRoute] = useState<WeighStation[][]>([]);
+  const [showPoiMenu, setShowPoiMenu] = useState(false);
+  const [poiCategory, setPoiCategory] = useState<PoiCategory | null>(null);
+  const [poiResults, setPoiResults] = useState<Poi[]>([]);
+  const [loadingPois, setLoadingPois] = useState(false);
+  const [addedPois, setAddedPois] = useState<Poi[]>([]);
+  const [waypoints, setWaypoints] = useState<NavStop[]>([]);
+
+  const queryClient = useQueryClient();
+  const { data: weighStationStatuses } = useListWeighStationStatuses();
+  const setWeighStationStatusMutation = useSetWeighStationStatus();
+  const weighStationStatusMap: Record<string, "open" | "closed" | undefined> = {};
+  (weighStationStatuses ?? []).forEach((s) => { weighStationStatusMap[s.osmId] = s.status as "open" | "closed"; });
+
+  const selectedRoute = routeOptions[selectedRouteIdx] ?? null;
+  const selectedHazards = routeHazardsByRoute[selectedRouteIdx] ?? [];
+  const selectedWeighStations = weighStationsByRoute[selectedRouteIdx] ?? [];
+
+  const mapHandleRef = useRef<MapHandle>(null);
 
   const handleMapClick = (lat: number, lng: number) => {
     if (!droppingPin) return;
@@ -517,12 +737,24 @@ export default function MapScreen() {
 
   const handleLocationNav = (id: string) => router.push(`/location/${id}`);
 
+  const focusRoute = (route: RouteData) => {
+    if (!route) return;
+    const midIdx = Math.floor(route.coords.length / 2);
+    const [midLng, midLat] = route.coords[midIdx];
+    mapHandleRef.current?.flyTo(midLat, midLng, 7);
+  };
+
   const handleDirections = (id: string, lat: number, lng: number) => {
     const loc = results.find((l) => l.id === id);
     setRouteDestName(loc?.companyName ?? null);
+    setRouteDestCoord({ lat, lng });
     setIsLoadingRoute(true);
-    setRouteData(null);
-    setHazards([]);
+    setRouteOptions([]);
+    setRouteHazardsByRoute([]);
+    setWeighStationsByRoute([]);
+    setSelectedRouteIdx(0);
+    setWaypoints([]);
+    setAddedPois([]);
     setLoadingHazards(false);
 
     if (!navigator.geolocation) {
@@ -531,14 +763,18 @@ export default function MapScreen() {
     }
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const route = await fetchRoute(pos.coords.latitude, pos.coords.longitude, lat, lng);
-        setRouteData(route);
+        const routes = await fetchRoutes(pos.coords.latitude, pos.coords.longitude, lat, lng);
+        setRouteOptions(routes);
         setIsLoadingRoute(false);
-        if (route) {
+        if (routes[0]) focusRoute(routes[0]);
+        if (routes.length > 0) {
           setLoadingHazards(true);
-          fetchRouteHazards(route.coords).then((h) => {
-            setHazards(h);
+          Promise.all(routes.map((r) => fetchRouteHazards(r.coords))).then((all) => {
+            setRouteHazardsByRoute(all);
             setLoadingHazards(false);
+          });
+          Promise.all(routes.map((r) => fetchWeighStationsAlongRoute(r.coords))).then((all) => {
+            setWeighStationsByRoute(all);
           });
         }
       },
@@ -547,11 +783,106 @@ export default function MapScreen() {
     );
   };
 
+  const toggleWeighStationStatus = (osmId: string, current: "open" | "closed" | undefined) => {
+    const next = current === "open" ? "closed" : "open";
+    setWeighStationStatusMutation.mutate(
+      { osmId, data: { status: next } },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListWeighStationStatusesQueryKey() }) }
+    );
+  };
+
+  const openPoiCategory = async (category: PoiCategory) => {
+    if (!selectedRoute) return;
+    setPoiCategory(category);
+    setShowPoiMenu(false);
+    setLoadingPois(true);
+    setPoiResults([]);
+    const pois = await fetchPoisAlongRoute(category, selectedRoute.coords);
+    setPoiResults(pois);
+    setLoadingPois(false);
+  };
+
+  const addPoiWaypoint = (poi: Poi) => {
+    if (!routeDestCoord) return;
+    const nextAdded = [...addedPois, poi];
+    setAddedPois(nextAdded);
+    setPoiCategory(null);
+    setPoiResults([]);
+
+    const nextWaypoints: NavStop[] = nextAdded.map((p) => ({ lat: p.lat, lng: p.lng, label: p.label }));
+    setWaypoints(nextWaypoints);
+
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const wpCoords: [number, number][] = nextAdded.map((p) => [p.lng, p.lat]);
+        const routes = await fetchRoutes(
+          pos.coords.latitude, pos.coords.longitude,
+          routeDestCoord.lat, routeDestCoord.lng, wpCoords
+        );
+        if (routes.length > 0) {
+          setRouteOptions(routes);
+          setSelectedRouteIdx(0);
+          focusRoute(routes[0]);
+          setLoadingHazards(true);
+          Promise.all(routes.map((r) => fetchRouteHazards(r.coords))).then((all) => {
+            setRouteHazardsByRoute(all);
+            setLoadingHazards(false);
+          });
+          Promise.all(routes.map((r) => fetchWeighStationsAlongRoute(r.coords))).then((all) => {
+            setWeighStationsByRoute(all);
+          });
+        }
+      },
+      () => {},
+      { timeout: 10000 }
+    );
+  };
+
+  const addPoiWaypointById = (id: string) => {
+    const poi = poiResults.find((p) => p.id === id);
+    if (poi) addPoiWaypoint(poi);
+  };
+
+  const selectRoute = (idx: number) => {
+    setSelectedRouteIdx(idx);
+    const route = routeOptions[idx];
+    if (route) focusRoute(route);
+  };
+
+  const handleStartNavigation = () => {
+    if (!routeDestCoord) return;
+    startNativeNavigation({ lat: routeDestCoord.lat, lng: routeDestCoord.lng, label: routeDestName ?? undefined }, waypoints);
+  };
+
   const clearRoute = () => {
-    setRouteData(null);
+    setRouteOptions([]);
     setRouteDestName(null);
-    setHazards([]);
+    setRouteDestCoord(null);
+    setRouteHazardsByRoute([]);
+    setWeighStationsByRoute([]);
+    setSelectedRouteIdx(0);
+    setWaypoints([]);
+    setAddedPois([]);
+    setShowPoiMenu(false);
+    setPoiCategory(null);
+    setPoiResults([]);
     setLoadingHazards(false);
+  };
+
+  const zoomIn = () => mapHandleRef.current?.zoomIn();
+  const zoomOut = () => mapHandleRef.current?.zoomOut();
+  const locateMe = () => {
+    if (!navigator.geolocation) return;
+    setLocatingMe(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        mapHandleRef.current?.flyTo(pos.coords.latitude, pos.coords.longitude, 12);
+        setLocatingMe(false);
+      },
+      () => setLocatingMe(false),
+      { timeout: 10000 }
+    );
   };
 
   const WEB_TOP = 67;
@@ -562,33 +893,121 @@ export default function MapScreen() {
       <View style={StyleSheet.absoluteFill}>
         {useGL ? (
           <MapboxMap
+            ref={mapHandleRef}
             locations={results}
             isDark={isDark}
             mapView={mapView}
             droppingPin={droppingPin}
             droppedPin={droppedPin}
-            routeData={routeData}
-            hazards={hazards}
+            routeData={selectedRoute}
+            hazards={selectedHazards}
+            weighStations={selectedWeighStations}
+            weighStationStatus={weighStationStatusMap}
+            pois={poiResults}
             onMapClick={handleMapClick}
             onLocationNav={handleLocationNav}
             onDirections={handleDirections}
+            onWeighStationToggle={toggleWeighStationStatus}
+            onPoiAdd={addPoiWaypointById}
             onFallback={() => setUseGL(false)}
           />
         ) : (
           <LeafletMap
+            ref={mapHandleRef}
             locations={results}
             isDark={isDark}
             mapView={mapView}
             droppingPin={droppingPin}
             droppedPin={droppedPin}
-            routeData={routeData}
-            hazards={hazards}
+            routeData={selectedRoute}
+            hazards={selectedHazards}
+            weighStations={selectedWeighStations}
+            weighStationStatus={weighStationStatusMap}
+            pois={poiResults}
             onMapClick={handleMapClick}
             onLocationNav={handleLocationNav}
             onDirections={handleDirections}
+            onWeighStationToggle={toggleWeighStationStatus}
+            onPoiAdd={addPoiWaypointById}
           />
         )}
       </View>
+
+      {/* Zoom & locate controls */}
+      <View style={[styles.mapControls, { bottom: BOTTOM_BASE + (routeOptions.length > 0 || isLoadingRoute ? 220 : 0) }]} pointerEvents="box-none">
+        <View style={[styles.mapControlGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TouchableOpacity style={styles.mapControlBtn} onPress={zoomIn} activeOpacity={0.7}>
+            <Ionicons name="add" size={20} color={colors.foreground} />
+          </TouchableOpacity>
+          <View style={[styles.mapControlDivider, { backgroundColor: colors.border }]} />
+          <TouchableOpacity style={styles.mapControlBtn} onPress={zoomOut} activeOpacity={0.7}>
+            <Ionicons name="remove" size={20} color={colors.foreground} />
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          style={[styles.mapControlGroup, styles.locateBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={locateMe}
+          activeOpacity={0.7}
+        >
+          <Ionicons name={locatingMe ? "sync" : "locate"} size={19} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* POI waypoint button — visible during route review, ~1/3 down */}
+      {routeOptions.length > 0 && !droppedPin && (
+        <View style={styles.poiBtnWrap} pointerEvents="box-none">
+          <TouchableOpacity
+            style={[styles.poiBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setShowPoiMenu((v) => !v)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add-circle" size={22} color={colors.primary} />
+          </TouchableOpacity>
+          {showPoiMenu && (
+            <View style={[styles.poiMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {POI_CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat.key}
+                  style={styles.poiMenuItem}
+                  onPress={() => openPoiCategory(cat.key)}
+                >
+                  <Ionicons name={cat.icon as any} size={15} color={colors.foreground} />
+                  <Text style={[styles.poiMenuItemText, { color: colors.foreground }]}>{cat.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* POI results panel */}
+      {poiCategory && (
+        <View style={[styles.poiResultsCard, { backgroundColor: colors.card, borderColor: colors.border, top: insets.top + WEB_TOP + 90 }]}>
+          <View style={styles.routeCardHeaderRow}>
+            <Text style={[styles.routeCardDest, { color: colors.foreground }]} numberOfLines={1}>
+              {POI_CATEGORIES.find((c) => c.key === poiCategory)?.label ?? "Results"}
+            </Text>
+            <TouchableOpacity onPress={() => { setPoiCategory(null); setPoiResults([]); }} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+              <Ionicons name="close-circle" size={22} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+          {loadingPois ? (
+            <Text style={[styles.routeCardText, { color: colors.mutedForeground, marginTop: 8 }]}>Searching nearby…</Text>
+          ) : poiResults.length === 0 ? (
+            <Text style={[styles.routeCardText, { color: colors.mutedForeground, marginTop: 8 }]}>Nothing found along this route</Text>
+          ) : (
+            <ScrollView style={styles.poiResultsList} showsVerticalScrollIndicator={false}>
+              {poiResults.map((p) => (
+                <TouchableOpacity key={p.id} style={styles.poiResultRow} onPress={() => addPoiWaypoint(p)} activeOpacity={0.8}>
+                  <Ionicons name="pin" size={16} color={colors.primary} />
+                  <Text style={[styles.poiResultText, { color: colors.foreground }]} numberOfLines={1}>{p.label}</Text>
+                  <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      )}
 
       {/* Search & filter overlay */}
       <View
@@ -645,67 +1064,91 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Route info card */}
-      {(isLoadingRoute || routeData) && !droppedPin && (
+      {/* Route options card */}
+      {(isLoadingRoute || routeOptions.length > 0) && !droppedPin && (
         <View style={[styles.routeCard, { backgroundColor: colors.card, borderColor: colors.border, bottom: BOTTOM_BASE + 16 }]}>
           {isLoadingRoute ? (
             <View style={styles.routeCardRow}>
               <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
                 <Ionicons name="navigate-circle-outline" size={18} color={colors.primary} />
               </View>
-              <Text style={[styles.routeCardText, { color: colors.mutedForeground }]}>Finding route…</Text>
+              <Text style={[styles.routeCardText, { color: colors.mutedForeground }]}>Finding routes…</Text>
             </View>
-          ) : routeData ? (
+          ) : routeOptions.length > 0 ? (
             <>
-              <View style={styles.routeCardRow}>
-                <View style={[styles.routeIconWrap, { backgroundColor: colors.primary + "18" }]}>
-                  <Ionicons name="navigate" size={16} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.routeCardDest, { color: colors.foreground }]} numberOfLines={1}>
-                    {routeDestName}
-                  </Text>
-                  <Text style={[styles.routeCardMeta, { color: colors.mutedForeground }]}>
-                    {routeData.durationMin} min · {routeData.distanceMi.toFixed(1)} mi · Driving
-                  </Text>
-                </View>
+              <View style={styles.routeCardHeaderRow}>
+                <Text style={[styles.routeCardDest, { color: colors.foreground }]} numberOfLines={1}>
+                  {routeDestName}
+                </Text>
                 <TouchableOpacity onPress={clearRoute}>
                   <Ionicons name="close-circle" size={22} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
               {loadingHazards && (
                 <Text style={[styles.hazardScanText, { color: colors.mutedForeground }]}>
-                  Scanning for route hazards…
+                  Scanning routes for hazards…
                 </Text>
               )}
-              {!loadingHazards && hazards.length > 0 && (
-                <View style={styles.hazardChipsRow}>
-                  {hazards.filter((h) => h.type === "bridge").length > 0 && (
-                    <View style={[styles.hazardChip, { backgroundColor: "#F59E0B1A" }]}>
-                      <Text style={[styles.hazardChipSymbol, { color: "#F59E0B" }]}>⚠</Text>
-                      <Text style={[styles.hazardChipLabel, { color: "#F59E0B" }]}>{hazards.filter((h) => h.type === "bridge").length} Low Bridge{hazards.filter((h) => h.type === "bridge").length > 1 ? "s" : ""}</Text>
-                    </View>
-                  )}
-                  {hazards.filter((h) => h.type === "weighstation").length > 0 && (
-                    <View style={[styles.hazardChip, { backgroundColor: "#1E3A8A1A" }]}>
-                      <Text style={[styles.hazardChipSymbol, { color: "#1E3A8A" }]}>W</Text>
-                      <Text style={[styles.hazardChipLabel, { color: "#1E3A8A" }]}>{hazards.filter((h) => h.type === "weighstation").length} Weigh Stn{hazards.filter((h) => h.type === "weighstation").length > 1 ? "s" : ""}</Text>
-                    </View>
-                  )}
-                  {hazards.filter((h) => h.type === "catscale").length > 0 && (
-                    <View style={[styles.hazardChip, { backgroundColor: "#0E74901A" }]}>
-                      <Text style={[styles.hazardChipSymbol, { color: "#0E7490" }]}>C</Text>
-                      <Text style={[styles.hazardChipLabel, { color: "#0E7490" }]}>{hazards.filter((h) => h.type === "catscale").length} CAT Scale{hazards.filter((h) => h.type === "catscale").length > 1 ? "s" : ""}</Text>
-                    </View>
-                  )}
-                  {hazards.filter((h) => h.type === "railroad").length > 0 && (
-                    <View style={[styles.hazardChip, { backgroundColor: "#7C3AED1A" }]}>
-                      <Text style={[styles.hazardChipSymbol, { color: "#7C3AED" }]}>R</Text>
-                      <Text style={[styles.hazardChipLabel, { color: "#7C3AED" }]}>{hazards.filter((h) => h.type === "railroad").length} RR Hump{hazards.filter((h) => h.type === "railroad").length > 1 ? "s" : ""}</Text>
-                    </View>
-                  )}
-                </View>
-              )}
+              <View style={styles.routeOptionsList}>
+                {routeOptions.map((opt, idx) => {
+                  const hz = routeHazardsByRoute[idx] ?? [];
+                  const bridges = hz.filter((h) => h.type === "bridge").length;
+                  const rr = hz.filter((h) => h.type === "railroad").length;
+                  const selected = idx === selectedRouteIdx;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[
+                        styles.routeOptionCard,
+                        {
+                          borderColor: selected ? colors.primary : colors.border,
+                          backgroundColor: selected ? colors.primary + "12" : "transparent",
+                        },
+                      ]}
+                      onPress={() => selectRoute(idx)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[styles.routeOptionRadio, { borderColor: selected ? colors.primary : colors.border }]}>
+                        {selected && <View style={[styles.routeOptionRadioDot, { backgroundColor: colors.primary }]} />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.routeOptionMeta, { color: colors.foreground }]}>
+                          {idx === 0 ? "Fastest · " : `Option ${idx + 1} · `}
+                          {opt.durationMin} min · {opt.distanceMi.toFixed(1)} mi
+                        </Text>
+                        {!loadingHazards ? (
+                          bridges > 0 || rr > 0 ? (
+                            <View style={styles.hazardChipsRow}>
+                              {bridges > 0 && (
+                                <View style={[styles.hazardChip, { backgroundColor: "#F59E0B1A" }]}>
+                                  <Text style={[styles.hazardChipSymbol, { color: "#F59E0B" }]}>⚠</Text>
+                                  <Text style={[styles.hazardChipLabel, { color: "#F59E0B" }]}>{bridges} Low Bridge{bridges > 1 ? "s" : ""}</Text>
+                                </View>
+                              )}
+                              {rr > 0 && (
+                                <View style={[styles.hazardChip, { backgroundColor: "#7C3AED1A" }]}>
+                                  <Text style={[styles.hazardChipSymbol, { color: "#7C3AED" }]}>R</Text>
+                                  <Text style={[styles.hazardChipLabel, { color: "#7C3AED" }]}>{rr} RR Crossing{rr > 1 ? "s" : ""}</Text>
+                                </View>
+                              )}
+                            </View>
+                          ) : (
+                            <Text style={styles.routeOptionClear}>No known hazards</Text>
+                          )
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <TouchableOpacity
+                style={[styles.startNavBtn, { backgroundColor: colors.primary }]}
+                onPress={handleStartNavigation}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="navigate" size={16} color="#fff" />
+                <Text style={styles.startNavBtnText}>Start Navigation</Text>
+              </TouchableOpacity>
             </>
           ) : null}
         </View>
@@ -787,10 +1230,54 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 8,
   },
   routeCardRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  routeCardHeaderRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   routeIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  routeCardDest: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  routeCardDest: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
   routeCardMeta: { fontSize: 12, fontFamily: "Inter_400Regular" },
   routeCardText: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
+  routeOptionsList: { maxHeight: 190, marginTop: 8 },
+  routeOptionCard: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10, borderRadius: 12,
+    borderWidth: 1.5, padding: 10, marginBottom: 8,
+  },
+  routeOptionRadio: {
+    width: 18, height: 18, borderRadius: 9, borderWidth: 2,
+    alignItems: "center", justifyContent: "center", marginTop: 2,
+  },
+  routeOptionRadioDot: { width: 9, height: 9, borderRadius: 4.5 },
+  routeOptionMeta: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 4 },
+  routeOptionClear: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#22C55E" },
+  startNavBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    borderRadius: 12, paddingVertical: 13, marginTop: 4,
+  },
+  startNavBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  mapControls: { position: "absolute", right: 16, gap: 10, alignItems: "center" },
+  mapControlGroup: {
+    borderRadius: 12, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15, shadowRadius: 6, elevation: 6, overflow: "hidden",
+  },
+  mapControlBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
+  mapControlDivider: { height: 1, width: "100%" },
+  locateBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
+  poiBtnWrap: { position: "absolute", right: 16, top: "33%" },
+  poiBtn: {
+    width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: "center", justifyContent: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 6,
+  },
+  poiMenu: {
+    position: "absolute", top: 50, right: 0, borderRadius: 12, borderWidth: 1, minWidth: 170, paddingVertical: 4,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 10,
+  },
+  poiMenuItem: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
+  poiMenuItemText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  poiResultsCard: {
+    position: "absolute", left: 16, right: 16, borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 8, maxHeight: 260,
+  },
+  poiResultsList: { marginTop: 8 },
+  poiResultRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
+  poiResultText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
   pinCard: {
     position: "absolute", left: 16, right: 16, borderRadius: 16, borderWidth: 1, padding: 14, gap: 10,
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 10,

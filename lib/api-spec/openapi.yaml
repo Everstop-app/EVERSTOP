@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: weigh-stations
+    description: Weigh station live status operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /weigh-stations/status:
+    get:
+      operationId: listWeighStationStatuses
+      tags: [weigh-stations]
+      summary: List reported weigh station statuses
+      description: Returns all driver-reported weigh station open/closed statuses
+      responses:
+        "200":
+          description: List of weigh station statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WeighStationStatus"
+  /weigh-stations/status/{osmId}:
+    put:
+      operationId: setWeighStationStatus
+      tags: [weigh-stations]
+      summary: Report a weigh station's live status
+      description: Upserts the driver-reported open/closed status for a weigh station
+      parameters:
+        - name: osmId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeighStationStatusInput"
+      responses:
+        "200":
+          description: Updated weigh station status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeighStationStatus"
 components:
   schemas:
     HealthStatus:
@@ -31,6 +73,29 @@ components:
       properties:
         status:
           type: string
+      required:
+        - status
+    WeighStationStatus:
+      type: object
+      properties:
+        osmId:
+          type: string
+        status:
+          type: string
+          enum: [open, closed]
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - osmId
+        - status
+        - updatedAt
+    WeighStationStatusInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [open, closed]
       required:
         - status
 

@@ -1,2 +1,4 @@
 - [Mapbox tile setup](mapbox-tiles.md) — Mapbox via raster UrlTile (Expo Go compatible); mapbox-gl WebGL fails in Replit iframe.
 - [pnpm Babel phantom deps](pnpm-babel-phantom-deps.md) — bumping @babel/core in Expo apps can crash Metro on a phantom `@babel/generator` require; add it as an explicit devDependency.
+- [Main agent git push blocked](git-push-main-agent-blocked.md) — git push/commit is always blocked in main agent, even on assigned git tasks; use GitHub REST API instead.
+- [EverStop web/native map parity](everstop-web-native-parity.md) — index.tsx/index.web.tsx are separate manually-synced files; any map feature must be added to both.

@@ -1,4 +1,4 @@
-export type HazardType = "bridge" | "weighstation" | "catscale" | "railroad";
+export type HazardType = "bridge" | "railroad";
 
 export type Hazard = {
   id: string;
@@ -50,11 +50,6 @@ export async function fetchRouteHazards(coords: [number, number][]): Promise<Haz
     "(",
     `  node["maxheight"](${bbox});`,
     `  way["maxheight"]["highway"](${bbox});`,
-    `  node["amenity"="weigh_station"](${bbox});`,
-    `  node["highway"="weigh_station"](${bbox});`,
-    `  node["amenity"="cat_scale"](${bbox});`,
-    `  node["brand"~"Cat Scale",i](${bbox});`,
-    `  node["cat_scale"="yes"](${bbox});`,
     `  node["railway"="level_crossing"]["crossing:hump"="yes"](${bbox});`,
     ");",
     "out center;",
@@ -87,22 +82,6 @@ export async function fetchRouteHazards(coords: [number, number][]): Promise<Haz
 
       const t: Record<string, string> = el.tags ?? {};
 
-      if (
-        t.amenity === "cat_scale" ||
-        t.cat_scale === "yes" ||
-        (t.brand ?? "").toLowerCase().includes("cat scale")
-      ) {
-        hazards.push({ id: String(el.id), type: "catscale", lat, lng, label: t.name ?? "CAT Scale" });
-        continue;
-      }
-      if (t.amenity === "weigh_station" || t.highway === "weigh_station") {
-        hazards.push({
-          id: String(el.id), type: "weighstation", lat, lng,
-          label: t.name ?? "Weigh Station",
-          detail: t.operator ?? undefined,
-        });
-        continue;
-      }
       if (t.railway === "level_crossing" && t["crossing:hump"] === "yes") {
         hazards.push({ id: String(el.id), type: "railroad", lat, lng, label: "Railroad Hump Crossing" });
         continue;

@@ -11,6 +11,8 @@ import MapView, {
 
 import { useColors } from "@/hooks/useColors";
 import type { Hazard, HazardType } from "@/utils/routeHazards";
+import type { WeighStation } from "@/utils/weighStations";
+import type { Poi } from "@/utils/poiSearch";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 function mapboxUrl(style: string) {
@@ -41,10 +43,21 @@ type MapLayerProps = {
   droppedPin?: { lat: number; lng: number } | null;
   routeCoords?: [number, number][] | null;
   hazards?: Hazard[];
+  weighStations?: WeighStation[];
+  weighStationStatus?: Record<string, "open" | "closed" | undefined>;
+  onWeighStationTogglePress?: (id: string, current: "open" | "closed" | undefined) => void;
+  pois?: Poi[];
+  onPoiAddPress?: (poi: Poi) => void;
   onMapPress?: (lat: number, lng: number) => void;
   onMarkerPress: (id: string, lat: number, lng: number) => void;
   onCalloutPress: (id: string) => void;
   onDirectionsPress?: (id: string, lat: number, lng: number) => void;
+  onRegionChangeComplete?: (region: {
+    latitude: number;
+    longitude: number;
+    latitudeDelta: number;
+    longitudeDelta: number;
+  }) => void;
 };
 
 const CATEGORY_ICONS: Record<string, { icon: string; set: "ionicons" | "material" }> = {
@@ -78,10 +91,8 @@ function getPinColor(location: Location): string {
 }
 
 const HAZARD_CFG: Record<HazardType, { bg: string; symbol: string }> = {
-  bridge:       { bg: "#F59E0B", symbol: "⚠" },
-  weighstation: { bg: "#1E3A8A", symbol: "W" },
-  catscale:     { bg: "#0E7490", symbol: "C" },
-  railroad:     { bg: "#7C3AED", symbol: "R" },
+  bridge:   { bg: "#F59E0B", symbol: "⚠" },
+  railroad: { bg: "#7C3AED", symbol: "R" },
 };
 
 function HazardPin({ type }: { type: HazardType }) {
@@ -148,10 +159,16 @@ export function MapLayer({
   droppedPin,
   routeCoords,
   hazards = [],
+  weighStations = [],
+  weighStationStatus = {},
+  onWeighStationTogglePress,
+  pois = [],
+  onPoiAddPress,
   onMapPress,
   onMarkerPress,
   onCalloutPress,
   onDirectionsPress,
+  onRegionChangeComplete,
 }: MapLayerProps) {
   const colors = useColors();
 
@@ -182,6 +199,7 @@ export function MapLayer({
       onPress={(e) => {
         if (onMapPress) onMapPress(e.nativeEvent.coordinate.latitude, e.nativeEvent.coordinate.longitude);
       }}
+      onRegionChangeComplete={onRegionChangeComplete}
     >
       <UrlTile
         urlTemplate={tileUrl}
@@ -230,6 +248,57 @@ export function MapLayer({
               {h.detail ? (
                 <Text style={[styles.hazardCalloutSub, { color: colors.mutedForeground }]}>{h.detail}</Text>
               ) : null}
+            </View>
+          </Callout>
+        </Marker>
+      ))}
+
+      {weighStations.map((w) => {
+        const status = weighStationStatus[w.id];
+        const bg = status === "open" ? "#22C55E" : status === "closed" ? "#EF4444" : "#3B82F6";
+        return (
+          <Marker
+            key={`ws-${w.id}`}
+            coordinate={{ latitude: w.lat, longitude: w.lng }}
+            tracksViewChanges={false}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View style={[styles.weighPin, { backgroundColor: bg }]}>
+              <MaterialCommunityIcons name="scale-balance" size={14} color="#fff" />
+            </View>
+            <Callout tooltip onPress={() => onWeighStationTogglePress?.(w.id, status)}>
+              <View style={[styles.hazardCallout, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.hazardCalloutTitle, { color: colors.foreground }]}>{w.label}</Text>
+                <Text style={[styles.hazardCalloutSub, { color: colors.mutedForeground }]}>
+                  {status ? `Reported: ${status === "open" ? "Open" : "Closed"}` : "Status unknown"}
+                </Text>
+                {onWeighStationTogglePress && (
+                  <Text style={[styles.weighToggleHint, { color: colors.primary }]}>
+                    Tap to report {status === "open" ? "closed" : "open"}
+                  </Text>
+                )}
+              </View>
+            </Callout>
+          </Marker>
+        );
+      })}
+
+      {pois.map((p) => (
+        <Marker
+          key={`poi-${p.id}`}
+          coordinate={{ latitude: p.lat, longitude: p.lng }}
+          tracksViewChanges={false}
+          anchor={{ x: 0.5, y: 0.5 }}
+        >
+          <View style={styles.poiPin}>
+            <Ionicons name="pin" size={16} color="#fff" />
+          </View>
+          <Callout tooltip onPress={() => onPoiAddPress?.(p)}>
+            <View style={[styles.hazardCallout, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.hazardCalloutTitle, { color: colors.foreground }]}>{p.label}</Text>
+              {onPoiAddPress && (
+                <Text style={[styles.weighToggleHint, { color: colors.primary }]}>Tap to add as stop</Text>
+              )}
             </View>
           </Callout>
         </Marker>
@@ -458,4 +527,34 @@ const styles = StyleSheet.create({
   },
   hazardCalloutTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   hazardCalloutSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  weighPin: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2.5,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  weighToggleHint: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 4 },
+  poiPin: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#0EA5E9",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2.5,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 5,
+  },
 });

@@ -505,13 +505,11 @@ export default function LocationDetail() {
                 </Text>
               ) : (
                 <>
-                  {(["bridge", "weighstation", "catscale", "railroad"] as HazardType[]).map((type) => {
+                  {(["bridge", "railroad"] as HazardType[]).map((type) => {
                     const items = nearbyHazards.filter((h) => h.type === type);
                     if (items.length === 0) return null;
                     const CFG: Record<HazardType, { color: string; symbol: string; label: string }> = {
                       bridge:       { color: "#F59E0B", symbol: "⚠", label: "Low Clearance" },
-                      weighstation: { color: "#1E3A8A", symbol: "W", label: "Weigh Station" },
-                      catscale:     { color: "#0E7490", symbol: "C", label: "CAT Scale" },
                       railroad:     { color: "#7C3AED", symbol: "R", label: "RR Hump Crossing" },
                     };
                     const { color, symbol, label } = CFG[type];
